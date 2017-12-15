@@ -13,6 +13,12 @@ from io import open    # use with open("asas",'rt',encoding='utf-8')
 
 
 class Dataset(object):
+
+    @staticmethod
+    def load_meta(metafile):
+        with open(metafile, "rt", encoding="utf-8") as inp:
+            return json.load(inp)
+
     def __init__(self,metafile):
         self.metafile = metafile
         with open(metafile, "rt", encoding="utf-8") as inp:
