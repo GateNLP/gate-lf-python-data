@@ -1,11 +1,11 @@
-from dataset import Dataset
-from featurengram import FeatureNgram
-from featureattribute import FeatureAttribute
+from . dataset import Dataset
+from . featurengram import FeatureNgram
+from . featureattribute import FeatureAttribute
 
 class Features(object):
     def __init__(self, meta):
         # initialisation consists of going through the meta info and
-        # creating all the inidividual feature instances and storing them
+        # creating all the individual feature instances and storing them
         # in here in a list.
         # TODO: do we need to know here if we get a sequence of feature vectors?
         # NOTE: we should go through the actual features, not the attributes, so we do

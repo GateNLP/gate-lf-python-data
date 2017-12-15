@@ -1,4 +1,4 @@
-from feature import Feature
+from . feature import Feature
 
 ## This represents a simple attribute, of type number, boolean or string.
 ## the call method should convert a value of that type to the corresponding
@@ -7,8 +7,8 @@ from feature import Feature
 
 class FeatureAttribute(Feature):
 
-    def __init__(self,metainfo):
-        """Create the instance from the meta info of an input feature"""
+    def __init__(self, datatype, attrinfo, featurestats):
+        """Create the instance from the given meta info of an input feature"""
 
 
     def __call__(self):
