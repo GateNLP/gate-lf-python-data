@@ -1,6 +1,6 @@
 from . dataset import Dataset
 from . featurengram import FeatureNgram
-from . featureattribute import FeatureAttribute
+from . feature import Feature
 
 class Features(object):
     def __init__(self, meta):
@@ -32,10 +32,7 @@ class Features(object):
             # get a bit more info from the corresponding attribute metadata
             attrinfo = attrs[attrnr]
             fstats = stats["fname"]
-            if attrkind == "N":
-                thefeature = FeatureNgram(fname, dt, attrinfo, fstats)
-            else:
-                thefeature = FeatureAttribute(fname, dt, attrinfo, fstats)
+            thefeature = Feature.make(fname, dt, attrinfo, fstats)
             self.features.append(thefeature)
 
     def __call__(self, valuelist):
@@ -50,3 +47,10 @@ class Features(object):
         for i in range(len(self.features)):
             values.append(self.features[i](valuelist[i]))
         return values
+
+    def size(self):
+        return len(self.features)
+
+    def __str__(self):
+        l = [f.__str__() for f in self.features]
+        return "Features("+",".join(l)+")"

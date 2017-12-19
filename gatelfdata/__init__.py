@@ -1,6 +1,8 @@
 # https://stackoverflow.com/questions/10971033/backporting-python-3-openencoding-utf-8-to-python-2
-from . features import Features
-from . featurengram import FeatureNgram
-from . featureattribute import FeatureAttribute
-from . dataset import Dataset
-from . feature import Feature
+#from .feature import Feature
+#from . features import Features
+#from . featurengram import FeatureNgram
+#from . featurenumeric import FeatureNumeric
+#from . featurenominal1ofk import FeatureNominal1ofk
+#from . featurenominalembs import FeatureNominalEmbs
+#from . dataset import Dataset
