@@ -18,7 +18,7 @@ class FeatureBoolean(object):
     def __call__(self,valueorlist):
         """Converts True to float(1.0) and False to float(0.0)"""
         if type(valueorlist) == list:
-            return [bool2float(x) for x in valueorlist]
+            return [FeatureBoolean.bool2float(x) for x in valueorlist]
         else:
             return valueorlist
 

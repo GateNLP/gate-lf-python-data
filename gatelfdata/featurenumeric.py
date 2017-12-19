@@ -4,8 +4,9 @@
 
 class FeatureNumeric(object):
 
-    def __init__(self, attrinfo, featurestats):
+    def __init__(self, fname, attrinfo, featurestats):
         """For now, we do not do anything fancy for numeric features."""
+        self.fname = fname
         self.attrinfo = attrinfo
         self.featurestats = featurestats
 
@@ -13,3 +14,6 @@ class FeatureNumeric(object):
         """Currently this just passes through the original value or
         list of values. The value should be a float!"""
         return valueorlist
+
+    def __str__(self):
+        return "FeatureNumeric(name=" + self.fname+")"

@@ -1,6 +1,5 @@
-from . dataset import Dataset
-from . featurengram import FeatureNgram
 from . feature import Feature
+import sys
 
 class Features(object):
     def __init__(self, meta):
@@ -12,14 +11,7 @@ class Features(object):
         # not really need anything that represents an attributelist since this is
         # just a fixed number of simple attributes.
         # meta: either a string or the meta information already read in and parsed.
-        if type(meta) == Dataset:
-            self.meta = meta.meta
-        elif type(meta) == str:
-            self.meta = Dataset.load_meta(meta)
-        elif type(meta) == dict:
-            self.meta = meta
-        else:
-            raise Exception("Cannot interpret parameter as meta information")
+        self.meta = meta
         # now we have the meta, create the list of features
         self.features = []
         attrs = self.meta["featureInfo"]["attributes"]
@@ -31,7 +23,7 @@ class Features(object):
             attrkind = f["kind"]
             # get a bit more info from the corresponding attribute metadata
             attrinfo = attrs[attrnr]
-            fstats = stats["fname"]
+            fstats = stats[fname]
             thefeature = Feature.make(fname, dt, attrinfo, fstats)
             self.features.append(thefeature)
 

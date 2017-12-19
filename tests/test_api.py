@@ -38,9 +38,28 @@ class Tests4Features1test1(Tests4Features1):
     def test_t1(self):
         # check if the number of features is correct
         features = Features(self.meta)
-        print("Running Tests4Features1test1/test_t1, got ",features)
+        #print("Running Tests4Features1test1/test_t1, got ", features, file=sys.stderr)
         s = features.size()
-        assert s == 22
+        assert s == 34
+
+    def test_t2(self):
+        #print("Running Tests4Features1test1/test_t2", file=sys.stderr)
+        ds = Dataset(TESTFILE1)
+        #print("DEBUG: ds=", ds, file=sys.stderr)
+        it1 = iter(ds.instances_as_data())
+        #print("DEBUG: iterator=", it1, file=sys.stderr)
+        rec = next(it1)
+        #print("DEBUG: rec=", rec, file=sys.stderr)
+        # we expect rec to be a pair: indep and dep
+        indep, dep = rec
+        # the indep part has as many values as there are features here
+        assert len(indep) == 34
+        # the dep part is the encoding for two nominal classes, we use
+        # a one-hot encoding always for now, so this should be a vector
+        # of length 2
+
+        # TODO: !!!! ENABLE!!!!
+        #assert len(dep) == 2
 
 
 class TestFeatureNgram(Tests4Features1):
