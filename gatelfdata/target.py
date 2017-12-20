@@ -10,4 +10,8 @@ class Target(object):
 
     @classmethod
     def make(cls, meta):
-        return TargetNominal()
+        targetStats = meta["targetStats"]
+        stringCounts = targetStats["stringCounts"]
+        if len(stringCounts) == 0:
+            raise Exception("Only nominal targets supported for now")
+        return TargetNominal(targetStats)

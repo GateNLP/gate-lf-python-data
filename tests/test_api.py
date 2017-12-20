@@ -16,6 +16,20 @@ TESTFILE2 = os.path.join(DATADIR, "class-ngram-sp1.meta.json")
 TESTFILE3 = os.path.join(DATADIR, "class-window-pos1.meta.json")
 TESTFILE4 = os.path.join(DATADIR, "seq-pos1.meta.json")
 
+class TestVocab1(unittest.TestCase):
+
+    def test_vocab1(self):
+        from gatelfdata.vocab import Vocab
+        d1 = {"a":12, "b":13, "c":1, "d":2, "x":12}
+        v1 = Vocab(d1,add_symbols=["<<START>>"],max_size=3,min_freq=2)
+        print("\nTestVocab/test_vocab1: v1.itos=", v1.itos, file=sys.stderr)
+        print("\nTestVocab/test_vocab1: v1.stoi=", v1.stoi, file=sys.stderr)
+        assert len(v1.itos) == 3
+        assert len(v1.stoi) == 3
+        assert "a" in v1.itos
+        assert v1.stoi["a"] == 2
+        assert v1.stoi["b"] == 1
+        assert v1.stoi["<<START>>"] == 0
 
 class Tests4Features1(unittest.TestCase):
     """Tests for the ionosphere dataset"""
