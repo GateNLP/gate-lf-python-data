@@ -8,7 +8,7 @@ import json
 from io import open    # use with open("asas",'rt',encoding='utf-8')
 from collections import Counter, OrderedDict, defaultdict
 import re
-
+import numpy as np
 
 class Vocab(object):
     """From the counter object, create string to id and id to string
@@ -27,7 +27,7 @@ class Vocab(object):
                 raise Exception("Additional symbol already in counts:",s)
         self.min_freq = min_freq
         # got through the entries and put all the keys into a list
-        self.itos = [s for s in self.freqs if self.freqs[s] >= min_freq]
+        self.itos = [s for s in self.freqs if (self.freqs[s] >= min_freq)]
         # sort the keys by frequency in reverse order
         self.itos = sorted(self.itos)
         self.itos = sorted(self.itos, reverse=True, key=lambda x: self.freqs[x])
@@ -39,3 +39,17 @@ class Vocab(object):
         self.stoi = defaultdict(int)
         for i,s in enumerate(self.itos):
             self.stoi[s] = i
+        self.n = len(self.itos)
+
+    def string2onehot(self, thestring):
+        """return a one-hot vector for the string"""
+        vec = [0.0] * len(self.itos)
+        if thestring in self.stoi:
+            vec[self.stoi[thestring]] = 1.0
+        return vec
+
+    def onehot2string(self, vec):
+        # check if there is really just one 1.0 in the vector!
+        # TODO
+        idx=vec.index(1.0)  ## TODO: this raises an exceptio if there is no 1.0
+        return self.itos[idx]

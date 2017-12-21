@@ -30,6 +30,12 @@ class TestVocab1(unittest.TestCase):
         assert v1.stoi["a"] == 2
         assert v1.stoi["b"] == 1
         assert v1.stoi["<<START>>"] == 0
+        vec = v1.onehot("a")
+        assert  len(vec) == 3
+        assert vec[0] == 0.0
+        assert vec[1] == 0.0
+        assert vec[2] == 1.0
+
 
 class Tests4Features1(unittest.TestCase):
     """Tests for the ionosphere dataset"""
@@ -63,7 +69,8 @@ class Tests4Features1test1(Tests4Features1):
         it1 = iter(ds.instances_as_data())
         #print("DEBUG: iterator=", it1, file=sys.stderr)
         rec = next(it1)
-        #print("DEBUG: rec=", rec, file=sys.stderr)
+
+        print("DEBUG: rec=", rec, file=sys.stderr)
         # we expect rec to be a pair: indep and dep
         indep, dep = rec
         # the indep part has as many values as there are features here
@@ -71,9 +78,67 @@ class Tests4Features1test1(Tests4Features1):
         # the dep part is the encoding for two nominal classes, we use
         # a one-hot encoding always for now, so this should be a vector
         # of length 2
+        assert len(dep) == 2
 
-        # TODO: !!!! ENABLE!!!!
+    def test_t3(self):
+        #print("Running Tests4Features1test1/test_t3", file=sys.stderr)
+        ds = Dataset(TESTFILE2)
+        #print("DEBUG: ds=", ds, file=sys.stderr)
+        it1 = iter(ds.instances_as_data())
+        #print("DEBUG: iterator=", it1, file=sys.stderr)
+        #rec = next(it1)
+
+        #print("DEBUG: rec=", rec, file=sys.stderr)
+        # we expect rec to be a pair: indep and dep
+        #indep, dep = rec
+        # the indep part has as many values as there are features here
+        #assert len(indep) == 34
+        # the dep part is the encoding for two nominal classes, we use
+        # a one-hot encoding always for now, so this should be a vector
+        # of length 2
         #assert len(dep) == 2
+
+    def test_t4(self):
+        #print("Running Tests4Features1test1/test_t4", file=sys.stderr)
+        ds = Dataset(TESTFILE3)
+        #print("DEBUG: ds=", ds, file=sys.stderr)
+        it1 = iter(ds.instances_as_data())
+        #print("DEBUG: iterator=", it1, file=sys.stderr)
+        #rec = next(it1)
+
+        #print("DEBUG: rec=", rec, file=sys.stderr)
+        # we expect rec to be a pair: indep and dep
+        #indep, dep = rec
+        # the indep part has as many values as there are features here
+        #assert len(indep) == 34
+        # the dep part is the encoding for two nominal classes, we use
+        # a one-hot encoding always for now, so this should be a vector
+        # of length 2
+        #assert len(dep) == 2
+
+    def test_t5(self):
+        #print("Running Tests4Features1test1/test_t4", file=sys.stderr)
+        ds = Dataset(TESTFILE4)
+        print("DEBUG: ds=", ds, file=sys.stderr)
+        it1 = iter(ds.instances_as_data())
+        #print("DEBUG: iterator=", it1, file=sys.stderr)
+        rec = next(it1)
+
+        print("DEBUG: rec=", rec, file=sys.stderr)
+        # we expect rec to be a pair: indep and dep
+        indep, dep = rec
+        print("DEBUG: indep=", indep, file=sys.stderr)
+        print("DEBUG: dep=", dep, file=sys.stderr)
+        # the first row is a sequence of 3 elements, with 18 independent
+        # features and one of 17 different targets
+        assert len(indep) == 18
+        # TODO!!!! Rethink what we should return for dep: this should
+        # be a sequence of one-hot vectors, so the length here is
+        # equal to the sequence length
+        assert len(dep) == 3
+        # check if the class is actually ADJ
+        print("DEBUG: target1=", , file=sys.stderr)
+
 
 
 class TestFeatureNgram(Tests4Features1):

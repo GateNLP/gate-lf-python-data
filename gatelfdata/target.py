@@ -14,4 +14,4 @@ class Target(object):
         stringCounts = targetStats["stringCounts"]
         if len(stringCounts) == 0:
             raise Exception("Only nominal targets supported for now")
-        return TargetNominal(targetStats)
+        return TargetNominal(meta)
