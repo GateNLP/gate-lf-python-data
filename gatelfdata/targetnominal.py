@@ -17,7 +17,7 @@ class TargetNominal(object):
 
     def __call__(self, value):
         if self.isSequence:
-            ret = [self.vocab.onehot(v) for v in value]
+            ret = [self.vocab.string2onehot(v) for v in value]
             return ret
         else:
-            return self.vocab.onehot(value)
+            return self.vocab.string2onehot(value)

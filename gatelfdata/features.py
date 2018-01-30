@@ -32,7 +32,7 @@ class Features(object):
             thefeature = Feature.make(fname, dt, attrinfo, fstats)
             self.features.append(thefeature)
 
-    def _convert_featurevec(self,valuelist):
+    def _convert_featurevec(self, valuelist):
         if len(valuelist) != len(self.features):
             raise Exception("Wrong number of values passed, expected", len(self.features), "got", len(valuelist))
         values = []
@@ -60,8 +60,7 @@ class Features(object):
                 seqofvecs.append(vals4featurevec)
             # now each element in sequofvecs should have as many elements
             # as there are features, just transpose that matrix
-            return [l for l in map(list,zip(*seqofvecs))]
-
+            return [l for l in map(list, zip(*seqofvecs))]
         else:
             values = self._convert_featurevec(valuelist)
             return values

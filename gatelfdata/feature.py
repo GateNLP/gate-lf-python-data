@@ -1,3 +1,4 @@
+from __future__ import print_function
 from . featurenominal1ofk import FeatureNominal1ofk
 from . featurenumeric import FeatureNumeric
 from . featurenominalembs import FeatureNominalEmbs
@@ -16,6 +17,8 @@ class Feature(object):
     def make(cls, fname, datatype, attribute, featurestats):
         """Return the proper feature instance for the datatype, attribute
         and feature statistics."""
+        print("DEBUG: making feature for name/type/attr:",
+              fname, datatype, attribute, file=sys.stderr)
         kind = attribute["featureCode"]
         if kind == "N":
             # create an ngram feature, based on a simple feature of type nominal

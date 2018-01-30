@@ -9,3 +9,4 @@ from .featurenumeric import FeatureNumeric
 from .dataset import Dataset
 from .target import Target
 from .targetnominal import TargetNominal
+from .vocab import Vocab

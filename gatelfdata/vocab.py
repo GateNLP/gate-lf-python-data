@@ -12,8 +12,9 @@ import numpy as np
 
 class Vocab(object):
     """From the counter object, create string to id and id to string
-    mappings. Has attributes stoi and itos"""
-    def __init__(self,counts,max_size=None,min_freq=1,add_symbols=[]):
+    mappings. Has attributes stoi and itos. Also has methods string2onehot(string)
+    and onehot2string(vector) to convert from and to dense one-hot vectors."""
+    def __init__(self, counts, max_size=None, min_freq=1, add_symbols=[]):
         """Create a vocabulary instance from the counts. If max_size is
         given sorts by frequency and only retains the max_size most frequent
         ones. Removes everything less the min_freq. Finally adds the
