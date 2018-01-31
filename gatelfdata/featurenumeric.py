@@ -1,3 +1,5 @@
+from __future__ import print_function
+import sys
 # This represents a simple numeric attribute
 
 # TODO: implement (optional?) scaling!
@@ -10,7 +12,7 @@ class FeatureNumeric(object):
         self.attrinfo = attrinfo
         self.featurestats = featurestats
 
-    def __call__(self,valueorlist):
+    def __call__(self, valueorlist):
         """Currently this just passes through the original value or
         list of values. The value should be a float!"""
         return valueorlist

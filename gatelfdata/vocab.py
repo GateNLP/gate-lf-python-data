@@ -42,6 +42,17 @@ class Vocab(object):
             self.stoi[s] = i
         self.n = len(self.itos)
 
+    def idx2string(self, idx):
+        # TODO: we may need to handle a couple of additional special cases here!
+        if idx >= len(self.itos):
+            return "<PAD>" # TODO: we need a more organized way of handling special symbols!!
+        else:
+            return self.itos[idx]
+
+    def string2idx(self, string):
+        # TODO: implement some special cases here
+        return self.stoi.get(string)
+
     def string2onehot(self, thestring):
         """return a one-hot vector for the string"""
         vec = [0.0] * len(self.itos)
