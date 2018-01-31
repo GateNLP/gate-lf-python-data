@@ -18,4 +18,7 @@ class FeatureNumeric(object):
         return valueorlist
 
     def __str__(self):
-        return "FeatureNumeric(name=" + self.fname+")"
+        return "FeatureNumeric(name=%s)" % self.fname
+
+    def __repr__(self):
+        return "FeatureNumeric(name=%r)" % self.fname

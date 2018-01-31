@@ -1,5 +1,9 @@
 from . feature import Feature
 import sys
+import logging
+from . vocabs import Vocabs
+
+logger = logging.getLogger(__name__)
 
 class Features(object):
 
@@ -21,6 +25,18 @@ class Features(object):
         self.features = []
         attrs = self.meta["featureInfo"]["attributes"]
         stats = self.meta["featureStats"]
+        # TODO: we need to handle the Vocab creation differently: instead of creating each
+        # vocab as part of the make, we need to first collect the stats for all
+        # all attrs that share the same vocab so that the final counts and entries for the
+        # vocab are the union of all the individual stats!
+        for f in self.meta["features"]:
+            dt = f["datatype"]
+            attrnr = f["attrid"]
+            attrinfo = attrs[attrnr]
+            attrcode = attrinfo.get("code")
+            if dt == "nominal":
+                Vocabs.setup_vocab(attrinfo, stats[f["name"]])
+            Vocabs.finish()
         for f in self.meta["features"]:
             dt = f["datatype"]
             attrnr = f["attrid"]
@@ -30,6 +46,7 @@ class Features(object):
             attrinfo = attrs[attrnr]
             fstats = stats[fname]
             thefeature = Feature.make(fname, dt, attrinfo, fstats)
+            logger.debug("Features: appending feature=%r", thefeature)
             self.features.append(thefeature)
 
     def _convert_featurevec(self, valuelist):
@@ -37,19 +54,20 @@ class Features(object):
             raise Exception("Wrong number of values passed, expected", len(self.features), "got", len(valuelist))
         values = []
         for i in range(len(self.features)):
-            values.append(self.features[i](valuelist[i]))
+            res = self.features[i](valuelist[i])
+            values.append(res)
         return values
 
     def __call__(self, valuelist):
-        ## For a feature vector:
-        ## this will go through each input and run it through the stored feature
-        ## instance, and the values will get put into the result list and returned
-        ## Note that for ngram attributes, the "value" to put into the list is itself a list
-        ## (of embedding indices).
-        ## For a sequence of feature vectors: will return a list/vector
-        ## for each feature where each element corresponds to a sequence element
-        ## So the representation gets changed from a list of feature vectors
-        ## of values to a list of values for each feature
+        # For a feature vector:
+        # this will go through each input and run it through the stored feature
+        # instance, and the values will get put into the result list and returned
+        # Note that for ngram attributes, the "value" to put into the list is itself a list
+        # (of embedding indices).
+        # For a sequence of feature vectors: will return a list/vector
+        # for each feature where each element corresponds to a sequence element
+        # So the representation gets changed from a list of feature vectors
+        # of values to a list of values for each feature
         if self.isSequence:
             # for now we do this in an easy to understand but maybe slow way:
             # first go convert each of the feature vectors in the sequence
@@ -68,6 +86,15 @@ class Features(object):
     def size(self):
         return len(self.features)
 
+    def __repr__(self):
+        l = [f.__repr__() for f in self.features]
+        return "Features(features=%r)" % l
+
     def __str__(self):
         l = [f.__str__() for f in self.features]
         return "Features("+",".join(l)+")"
+
+    def pretty_print(self, file=sys.stdout):
+        print("Features:", file=file)
+        for f in self.features:
+            print("  ", f, file=file)

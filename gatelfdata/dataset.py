@@ -10,12 +10,14 @@ from io import open    # use with open("asas",'rt',encoding='utf-8')
 # ?? from future.builtins.disabled import *
 import re
 import sys
+import logging
 
 from .features import Features
 from .target import Target
 
 # from . import Feature
-
+print("DEBUG: setting logger for name ",__name__, file=sys.stderr)
+logger = logging.getLogger(__name__)
 
 class Dataset(object):
     """Class representing training data present in the meta and data files.
@@ -80,7 +82,11 @@ class Dataset(object):
                 with open(self.datafile, "rt", encoding="utf=8") as inp:
                     for line in inp:
                         (indep, dep) = json.loads(line)
-                        print("DEBUG Dataset:",[indep, dep], file=sys.stderr)
+                        logger.debug("Dataset read: indep/dep=%r/%r", indep, dep)
                         yield [self.features(indep), self.target(dep)]
         return DataIterable(self.meta, self.datafile, self.features, self.target)
+
+    def pp_meta(self, file=sys.stdout):
+        """Produce a nice and pretty print out of the meta information"""
+        print("Dataset.pp_meta: NOT YET IMPLEMENTED")
 

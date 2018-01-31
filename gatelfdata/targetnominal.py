@@ -13,7 +13,8 @@ class TargetNominal(object):
         self.stringCounts = targetStats["stringCounts"]
         self.nrTargets = len(self.stringCounts)
         self.freqs = Counter(self.stringCounts)
-        self.vocab = Vocab(self.freqs)
+        self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_pad=True)
+        self.vocab.finish()
 
     def __call__(self, value):
         if self.isSequence:
@@ -21,3 +22,9 @@ class TargetNominal(object):
             return ret
         else:
             return self.vocab.string2onehot(value)
+
+    def __str__(self):
+        return "TargetNominal()"
+
+    def __repr__(self):
+        return "TargetNominal()"

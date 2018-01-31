@@ -1,17 +1,20 @@
 from __future__ import print_function
 import sys
+import logging
 from . vocabs import Vocabs
+
+logger = logging.getLogger(__name__)
 
 class FeatureNgram(object):
     """Represents an ngram attribute. The value of such an attribute is a list/sequence of
     things that can be represented by embeddings, """
     def __init__(self, fname, attrinfo, featurestats):
         """Create the instance from the given meta info of an input feature"""
-        print("DEBUG: creating FeatureNgram instance for fname=", fname, "attrinfo=", attrinfo, file=sys.stderr)
+        logger.debug("Creating FeatureNgram instance for fname/attrinfo=%r/%r", fname, attrinfo)
         self.fname = fname
         self.attrinfo = attrinfo
         self.featurestats = featurestats
-        self.vocab = Vocabs.addOrReturnVocab(attrinfo, featurestats)
+        self.vocab = Vocabs.get_vocab(attrinfo)
 
     def __call__(self, value):
         """Convert a value of the expected type for this feature to a value that can be
@@ -27,4 +30,7 @@ class FeatureNgram(object):
             raise Exception("Value for converting FeatureNgram not a list but {} of type {}".format(value,type(value)))
 
     def __str__(self):
-        return "FeatureNgram(name="+self.fname+")"
+        return "FeatureNgram(name=%s)" % self.fname
+
+    def __repr__(self):
+        return "FeatureNgram(name=%r)" % self.fname

@@ -4,7 +4,9 @@ from . featurenumeric import FeatureNumeric
 from . featurenominalembs import FeatureNominalEmbs
 from . featureboolean import FeatureBoolean
 from . featurengram import FeatureNgram
+import logging
 import sys
+logger = logging.getLogger(__name__)
 
 class Feature(object):
     """Base class of all features. All information shared between some of the features is
@@ -17,13 +19,11 @@ class Feature(object):
     def make(cls, fname, datatype, attribute, featurestats):
         """Return the proper feature instance for the datatype, attribute
         and feature statistics."""
-        print("DEBUG: making feature for name/type/attr:",
-              fname, datatype, attribute, file=sys.stderr)
         kind = attribute["featureCode"]
+        logger.debug("Making feature for kind/name/type/attr: %r/%r/%r/%r", kind, fname, datatype, attribute)
         if kind == "N":
             # create an ngram feature, based on a simple feature of type nominal
-            return FeatureNgram(fname, attribute, featurestats)
-            pass
+            ret = FeatureNgram(fname, attribute, featurestats)
         else:
             # create a simple feature of the correct type
             if datatype == "nominal":
@@ -31,17 +31,18 @@ class Feature(object):
                 # embedding or one-hot coding
                 # This is decided by the setting of the corresponding
                 # embedding definition.
-                emb_train = attribute["emb_train"]
-                emb_id = attribute["emb_id"]
+                emb_train = attribute["codeas"]
                 if emb_train == "onehot":
-                    return FeatureNominal1ofk(fname, attribute, featurestats)
+                    ret = FeatureNominal1ofk(fname, attribute, featurestats)
                 else:
-                    return FeatureNominalEmbs(fname, attribute, featurestats)
+                    ret = FeatureNominalEmbs(fname, attribute, featurestats)
             elif datatype == "numeric":
                 # simple numeric feature
-                return FeatureNumeric(fname, attribute, featurestats)
+                ret = FeatureNumeric(fname, attribute, featurestats)
             elif datatype == "boolean":
                 # simple boolean feature
-                return FeatureBoolean(fname, attribute, featurestats)
+                ret = FeatureBoolean(fname, attribute, featurestats)
             else:
                 raise Exception("Odd datatype: ", datatype)
+        logger.debug("Returning: %r", ret)
+        return ret

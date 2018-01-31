@@ -1,9 +1,15 @@
+from __future__ import print_function
+import sys
+import logging
 # This represents a simple boolean attribute
+
+logger = logging.getLogger(__name__)
 
 class FeatureBoolean(object):
 
     def __init__(self, fname, attrinfo, featurestats):
         """For now, we do not do anything fancy for numeric features."""
+        logger.debug("Creating a FeatureBoolean from fname/attrinfo=%r/%r", fname, attrinfo)
         self.fname = fname
         self.attrinfo = attrinfo
         self.featurestats = featurestats
@@ -23,4 +29,7 @@ class FeatureBoolean(object):
             return valueorlist
 
     def __str__(self):
-        return "FeatureBoolean(name="+self.fname+")"
+        return "FeatureBoolean(name=%s" % self.fname
+
+    def __repr__(self):
+        return "FeatureBoolean(name=%r" % self.fname
