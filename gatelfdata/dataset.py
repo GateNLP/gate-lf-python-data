@@ -125,7 +125,7 @@ class Dataset(object):
                         yield converted
         return ConvertedIterable(convertedFile)
 
-    def batches_converted(self, convertedFile=None, batch_size=100, as_numpy=False):
+    def batches_converted(self, convertedFile=None, batch_size=100, as_numpy=False, pad_left=False):
         """Return a batch of instances for training. This reshapes the data in the following ways:
         For classification, the independent part is a list of batchsize values for each feature. So for
         a batch size of 100 and 18 features, the inputs are a list of 18 lists of 100 values each.
@@ -154,11 +154,15 @@ class Dataset(object):
                             line = inp.readline()
                             if line:
                                 converted = json.loads(line)
+                                ## TODO: properly collect
                                 collect.append(converted)
                                 logger.debug("Batch read: %r", converted)
                             else:
                                 eof = True
                                 break
+                        # TODO: if necessary, convert the collected stuff to numpy, padding any sequences
+                        # !! this should be done using a public method so the same method can be used to
+                        # convert the validation set to numpy!
                         yield collect
                         if eof:
                             break
@@ -166,6 +170,9 @@ class Dataset(object):
 
 
 
+    # TODO: return the validation set already re-shaped so it looks the same shape as a batch!
+    # Also, allow to return it in numpy format with padding etc. Use the public method for converting from
+    # one to the other for this!!
     def convert_to_file(self, outfile=None, return_validationset=True, validation_size=None, validation_part=0.1, random_seed=1):
         """Convert the whole data file to the given output file. If return_validationset is true, returns a list
         of converted instances for the validation set which are not written to the output file. If this is done,
