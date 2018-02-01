@@ -3,11 +3,8 @@ from __future__ import print_function
 import sys
 import logging
 
-logger = logging.getLogger(__name__)
-
 if sys.version_info[0] > 2:
     # py3k
-    logger.debug("Running p2comp, have python 3")
     import io
     def open(file, mode='r', buffering=-1, encoding=None,
              errors=None, newline=None, closefd=True, opener=None):
@@ -15,7 +12,6 @@ if sys.version_info[0] > 2:
                     errors=errors, buffering=buffering, newline=newline, closefd=closefd, opener=opener)
 else:
     # py2
-    logger.debug("Running p2comp, have python 2")
     import codecs
     import warnings
     def open(file, mode='r', buffering=-1, encoding=None,

@@ -112,7 +112,7 @@ class Vocab(object):
             self.itos = self.itos[:self.max_size]
         # now create the reverse map
         self.stoi = defaultdict(int)
-        for i,s in enumerate(self.itos):
+        for i, s in enumerate(self.itos):
             self.stoi[s] = i
         self.n = len(self.itos)
         self.finished = True

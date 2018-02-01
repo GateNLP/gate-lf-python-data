@@ -5,8 +5,6 @@ from . featurenominalembs import FeatureNominalEmbs
 from . featureboolean import FeatureBoolean
 from . featurengram import FeatureNgram
 import logging
-import sys
-logger = logging.getLogger(__name__)
 
 class Feature(object):
     """Base class of all features. All information shared between some of the features is
@@ -20,6 +18,7 @@ class Feature(object):
         """Return the proper feature instance for the datatype, attribute
         and feature statistics."""
         kind = attribute["featureCode"]
+        logger = logging.getLogger(__name__)
         logger.debug("Making feature for kind/name/type/attr: %r/%r/%r/%r", kind, fname, datatype, attribute)
         if kind == "N":
             # create an ngram feature, based on a simple feature of type nominal

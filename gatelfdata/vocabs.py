@@ -3,9 +3,6 @@ import sys
 from . vocab import Vocab
 import logging
 
-
-logger = logging.getLogger(__name__)
-
 class Vocabs(object):
     """A class for managing all the vocab instances that are needed by features"""
 
@@ -15,6 +12,7 @@ class Vocabs(object):
     @classmethod
     def setup_vocab(cls, attrinfo, featurestats):
         """Create or update the temporary Vocab instances so that the counts from different attributes get merged"""
+        logger = logging.getLogger(__name__)
         logger.debug("Pre-initialising vocab for %r", attrinfo)
         counts = featurestats.get("stringCounts")
         if counts:

@@ -15,9 +15,6 @@ import logging
 from .features import Features
 from .target import Target
 
-# from . import Feature
-print("DEBUG: setting logger for name ",__name__, file=sys.stderr)
-logger = logging.getLogger(__name__)
 
 class Dataset(object):
     """Class representing training data present in the meta and data files.
@@ -79,6 +76,7 @@ class Dataset(object):
                 self.target = target
 
             def __iter__(self):
+                logger = logging.getLogger(__name__)
                 with open(self.datafile, "rt", encoding="utf=8") as inp:
                     for line in inp:
                         (indep, dep) = json.loads(line)

@@ -3,12 +3,11 @@ import sys
 import logging
 # This represents a simple boolean attribute
 
-logger = logging.getLogger(__name__)
-
 class FeatureBoolean(object):
 
     def __init__(self, fname, attrinfo, featurestats):
         """For now, we do not do anything fancy for numeric features."""
+        logger = logging.getLogger(__name__)
         logger.debug("Creating a FeatureBoolean from fname/attrinfo=%r/%r", fname, attrinfo)
         self.fname = fname
         self.attrinfo = attrinfo

@@ -6,12 +6,11 @@ import logging
 # This represents a simple nominal (string) attribute that should
 # get encoded as a one-hot vector of values
 
-logger = logging.getLogger(__name__)
-
 class FeatureNominal1ofk(object):
 
     def __init__(self, fname, attrinfo, featurestats):
         """Create the instance from the given meta info of an input feature"""
+        logger = logging.getLogger(__name__)
         logger.debug("Creating FeatureNominal1ofk instance for fname/attrinfo=%r/%r", fname, attrinfo)
         self.fname = fname
         self.attrinfo = attrinfo

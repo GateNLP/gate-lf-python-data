@@ -6,13 +6,12 @@ import logging
 # This represents a simple nominal (string) attribute that should
 # get encoded as a dense embedding vector
 
-logger = logging.getLogger(__name__)
-
 class FeatureNominalEmbs(object):
 
 
     def __init__(self, fname, attrinfo, featurestats):
         """Create the instance from the given meta info of an input feature"""
+        logger = logging.getLogger(__name__)
         logger.debug("Creating FeatureNgram instance for fname/attrinfo=%r/%r", fname, attrinfo)
         self.fname = fname
         self.attrinfo = attrinfo

@@ -3,11 +3,10 @@ import sys
 import logging
 from . vocabs import Vocabs
 
-logger = logging.getLogger(__name__)
-
 class Features(object):
 
     def __init__(self, meta):
+        logger = logging.getLogger(__name__)
         # initialisation consists of going through the meta info and
         # creating all the individual feature instances and storing them
         # in here in a list.
