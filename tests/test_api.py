@@ -62,6 +62,7 @@ class Tests4Features1test1(unittest.TestCase):
         assert s == 34
         it1 = iter(ds.instances_as_data())
         rec = next(it1)
+        logger.info("TESTFILE1 info=%r" % ds.get_info())
         logger.info("TESTFILE1 rec1=%r" % rec)
         # we expect rec to be a pair: indep and dep
         indep, dep = rec
@@ -90,6 +91,7 @@ class Tests4Features1test1(unittest.TestCase):
         it1 = iter(ds.instances_as_data())
         rec = next(it1)
         logger.info("TESTFILE2 rec1=%r", rec)
+        logger.info("TESTFILE2 info=%r" % ds.get_info())
         (indep1_it, dep1_it) = rec
         ngram1_it = indep1_it[0]
         logger.info("TESTFILE2 ngram1_it=%r", ngram1_it)
@@ -97,6 +99,9 @@ class Tests4Features1test1(unittest.TestCase):
         assert ngram1_it[0] == 3542
         assert ngram1_it[1] == 8
         assert len(dep1_it) == 2
+        # test converting the dataset and getting the validation set
+        valset = ds.convert_to_file("test_api_converted2.json")
+        logger.info("TESTFILE2 valsetsize=%r" % len(valset))
 
     def test_t4(self):
         logger.info("Running Tests4Features1test1/test_t4")
@@ -107,6 +112,7 @@ class Tests4Features1test1(unittest.TestCase):
         it1 = iter(ds.instances_as_data())
         rec = next(it1)
         logger.info("TESTFILE3 rec1=%r", rec)
+        logger.info("TESTFILE3 info=%r" % ds.get_info())
 
         # we expect rec to be a pair: indep and dep
         # indep, dep = rec
@@ -126,18 +132,23 @@ class Tests4Features1test1(unittest.TestCase):
         indep, dep = rec
         logger.info("TESTFILE4: indep=%r" % indep)
         logger.info("TESTFILE4: dep=%r" % dep)
+        logger.info("TESTFILE4 info=%r" % ds.get_info())
         # the first row is a sequence of 3 elements, with 18 independent
         # features and one of 17 different targets
+        # so we should convert this into 18 features which each now should have 3 values
+        # and 3 onehot vectors for the class
         assert len(indep) == 18
-        # TODO!!!! Rethink what we should return for dep: this should
-        # be a sequence of one-hot vectors, so the length here is
-        # equal to the sequence length
         assert len(dep) == 3
-        # check if the class is actually ADJ
-        # print("DEBUG: target1=", , file=sys.stderr)
-
-
-
+        # check if the class is actually ADJ for all three targets
+        dep1 = dep[0]
+        dep2 = dep[1]
+        dep3 = dep[2]
+        t11 =  ds.target.vocab.onehot2string(dep1)
+        assert t11 == "ADJ"
+        t12 = ds.target.vocab.onehot2string(dep2)
+        assert t12 == "ADJ"
+        t13 = ds.target.vocab.onehot2string(dep3)
+        assert t13 == "ADJ"
 
 if __name__ == '__main__':
     unittest.main()
