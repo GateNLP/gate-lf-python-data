@@ -125,6 +125,71 @@ class Dataset(object):
                         yield converted
         return ConvertedIterable(convertedFile)
 
+    def reshape_batch(self, instances, as_numpy=False, pad_left=False):
+        """Reshape the list of converted instances into what is expected for training on a batch.
+        NOTE: this only works for cases for now where we do not have nested sequences!!!!!
+        """
+        logger = logging.getLogger(__name__)
+        # instances is just a list of instances, where each instance is the format of "converted instances",
+        # which consists of two sub lists for the independent and dependent part.
+        batch_size = len(instances)
+        # we will create as many lists for the independent part as we have features
+        features_list = []
+        targets = []
+        max_seq_lengths = [0 for i in range(self.nFeatures)]
+        for i in range(self.nFeatures):
+            features_list.append([])
+        # we now got a list of empty lists, one empty list for each feature, now put the values
+        # of each of the features in the independent part in there.
+        for instance in instances:
+            (indep, dep) = instance
+            assert len(indep) == self.nFeatures
+            for i in range(self.nFeatures):
+                fv = indep[i]
+                if isinstance(fv, list):
+                    l = len(fv)
+                    if l > max_seq_lengths[i]:
+                        max_seq_lengths[i] = l
+                features_list[i].append(fv)
+            targets.append(dep)
+        logger.debug("reshape_batch: max_seq_lengths=%r" % max_seq_lengths)
+        if as_numpy:
+            # convert each feature and also the targets to numpy arrays of the correct shape
+            # We start with a list of nFeatures features, each represented as a list
+            # if that list contains itself lists, i.e. max_seq_lengths for it is > 0,
+            # then convert that list of lists into a numpy matrix
+            for i in range(self.nFeatures):
+                if max_seq_lengths[i] > 0:
+                    # this feature is represented as batchsize sublists
+                    values = features_list[i]
+                    # we check the type of the first element to figure out if we need floats or ints
+                    tmpval = values[0][0]
+                    maxlen = max_seq_lengths[i]
+                    if isinstance(tmpval,int):
+                        arr = np.zeros((batch_size, maxlen), np.int_)
+                    else:
+                        arr = np.zeros((batch_size, maxlen), np.float_)
+                    for j in range(batch_size):
+                        value = values[j]
+                        if pad_left:
+                            arr[j, -len(value):] = value
+                        else:
+                            arr[j, :len(value)] = value
+                    # replace by numpy
+                    features_list[i] = arr
+                else:
+                    # we just have batchsize values
+                    arr = np.array(features_list[i])
+                    features_list[i] = arr
+            # also convert the targets
+            # for each instance in the batch, a target is one of the following:
+            # - a one-hot list, indicating a nominal class
+            # - a list of one-hot lists, in case of sequence tagging
+            # - (not yet:) a numeric target, a single float value
+        ret = (features_list, targets)
+        return ret
+
+
     def batches_converted(self, convertedFile=None, batch_size=100, as_numpy=False, pad_left=False):
         """Return a batch of instances for training. This reshapes the data in the following ways:
         For classification, the independent part is a list of batchsize values for each feature. So for
@@ -140,9 +205,10 @@ class Dataset(object):
 
         class BatchIterable(object):
 
-            def __init__(self, convertedFile, batchsize):
+            def __init__(self, convertedFile, batchsize, parent):
                 self.convertedFile = convertedFile
                 self.batchsize = batchsize
+                self.parent = parent
 
             def __iter__(self):
                 logger = logging.getLogger(__name__)
@@ -154,19 +220,16 @@ class Dataset(object):
                             line = inp.readline()
                             if line:
                                 converted = json.loads(line)
-                                ## TODO: properly collect
                                 collect.append(converted)
                                 logger.debug("Batch read: %r", converted)
                             else:
                                 eof = True
                                 break
-                        # TODO: if necessary, convert the collected stuff to numpy, padding any sequences
-                        # !! this should be done using a public method so the same method can be used to
-                        # convert the validation set to numpy!
-                        yield collect
+                        batch = self.parent.reshape_batch(collect, as_numpy=as_numpy, pad_left=pad_left)
+                        yield batch
                         if eof:
                             break
-        return BatchIterable(convertedFile, batch_size)
+        return BatchIterable(convertedFile, batch_size, self)
 
 
 

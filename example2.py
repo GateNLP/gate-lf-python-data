@@ -14,5 +14,6 @@ TESTFILE4 = os.path.join(DATADIR, "seq-pos1.meta.json")
 
 ds = Dataset(TESTFILE2)
 valset = ds.convert_to_file()
-for b in ds.batches_converted():
+for b in ds.batches_converted(batch_size=20, as_numpy=True, pad_left=True):
   print("Batch: len=", len(b))
+  print("Batch: data=", b)
