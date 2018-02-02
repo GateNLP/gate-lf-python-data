@@ -61,9 +61,11 @@ class Dataset(object):
         if target_is_string:
             self.targetType = "nominal"
             self.targetClasses = list(self.meta["targetStats"]["stringCounts"].keys())
+            self.nClasses = len(self.targetClasses)
         else:
             self.targetType = "numeric"
             self.targetClasses = None
+            self.nClasses = 0
         self.convertedFile = None
 
     def instances_as_string(self):
@@ -137,6 +139,9 @@ class Dataset(object):
         features_list = []
         targets = []
         max_seq_lengths = [0 for i in range(self.nFeatures)]
+        max_target_seq = 0
+        nClasses = self.nClasses
+        isSequence = self.isSequence
         for i in range(self.nFeatures):
             features_list.append([])
         # we now got a list of empty lists, one empty list for each feature, now put the values
@@ -152,6 +157,10 @@ class Dataset(object):
                         max_seq_lengths[i] = l
                 features_list[i].append(fv)
             targets.append(dep)
+            if isSequence:
+                l = len(dep)
+                if l > max_target_seq:
+                    max_target_seq = l
         logger.debug("reshape_batch: max_seq_lengths=%r" % max_seq_lengths)
         if as_numpy:
             # convert each feature and also the targets to numpy arrays of the correct shape
@@ -181,11 +190,29 @@ class Dataset(object):
                     # we just have batchsize values
                     arr = np.array(features_list[i])
                     features_list[i] = arr
-            # also convert the targets
+            # also convert the targets to numpy, if requested
             # for each instance in the batch, a target is one of the following:
             # - a one-hot list, indicating a nominal class
             # - a list of one-hot lists, in case of sequence tagging
             # - (not yet:) a numeric target, a single float value
+            if as_numpy:
+                if nClasses == 0:
+                    arr = np.array(targets, np.float_)
+                elif isSequence:
+                    # sequence tagging, nominal classes: we need to create an array of
+                    # shape batchsize, maxseq, nclasses and fill in the values either left or right padded
+                    arr = np.zeros((batch_size, max_target_seq, nClasses), np.float_)
+                    # fill in the values for each instance
+                    for j in range(batch_size):
+                        v = targets[j]
+                        if pad_left:
+                            arr[j, -len(v):] = v
+                        else:
+                            arr[j, :len(v)] = v
+                else:
+                    # classification, nominal classes: we need an array of shape batchsize, nclasses
+                    arr = np.array(targets, np.float_)
+                targets = arr
         ret = (features_list, targets)
         return ret
 
@@ -280,6 +307,7 @@ class Dataset(object):
         ret["nFeatures"] = self.nFeatures
         ret["nInstances"] = self.nInstances
         ret["targetType"] = self.targetType
+        ret["nClasses"] = self.nClasses
         ret["targetClasses"] = self.targetClasses
         ret["features"] = self.features
         ret["target"] = self.target
