@@ -55,7 +55,8 @@ class Dataset(object):
         else:
             self.maxSequenceLength = None
             self.avgSequenceLength = None
-        self.nFeatures = len(self.meta["featureInfo"]["attributes"])
+        self.nAttrs = len(self.meta["featureInfo"]["attributes"])
+        self.nFeatures = len(self.meta["features"])
         self.nInstances = int(self.meta["linesWritten"])
         target_is_string = self.meta["targetStats"]["isString"]
         if target_is_string:
@@ -138,18 +139,19 @@ class Dataset(object):
         # we will create as many lists for the independent part as we have features
         features_list = []
         targets = []
-        max_seq_lengths = [0 for i in range(self.nFeatures)]
+        max_seq_lengths = [0 for i in range(self.nAttrs)]
         max_target_seq = 0
         nClasses = self.nClasses
         isSequence = self.isSequence
-        for i in range(self.nFeatures):
+        for i in range(self.nAttrs):
             features_list.append([])
         # we now got a list of empty lists, one empty list for each feature, now put the values
         # of each of the features in the independent part in there.
         for instance in instances:
             (indep, dep) = instance
+            # print("DEBUG: len(indep)=%r, nFeature=%r" % (len(indep), self.nFeatures))
             assert len(indep) == self.nFeatures
-            for i in range(self.nFeatures):
+            for i in range(self.nAttrs):
                 fv = indep[i]
                 if isinstance(fv, list):
                     l = len(fv)
@@ -167,7 +169,7 @@ class Dataset(object):
             # We start with a list of nFeatures features, each represented as a list
             # if that list contains itself lists, i.e. max_seq_lengths for it is > 0,
             # then convert that list of lists into a numpy matrix
-            for i in range(self.nFeatures):
+            for i in range(self.nAttrs):
                 if max_seq_lengths[i] > 0:
                     # this feature is represented as batchsize sublists
                     values = features_list[i]
@@ -304,7 +306,8 @@ class Dataset(object):
         ret["isSequence"] = self.isSequence
         ret["maxSequenceLength"] = self.maxSequenceLength
         ret["avgSequenceLength"] = self.avgSequenceLength
-        ret["nFeatures"] = self.nFeatures
+        ret["nAttrs"] = self.nAttrs
+        ret["nfeatures"] = self.nFeatures
         ret["nInstances"] = self.nInstances
         ret["targetType"] = self.targetType
         ret["nClasses"] = self.nClasses
@@ -314,7 +317,7 @@ class Dataset(object):
         return ret
 
     def __str__(self):
-        return "Dataset(meta=%s,isSeq=%s,nFeat=%s,N=%s)" % (self.metafile, self.isSequence, self.nFeatures, self.nInstances)
+        return "Dataset(meta=%s,isSeq=%s,nFeat=%s,N=%s)" % (self.metafile, self.isSequence, self.nAttrs, self.nInstances)
 
     def __repr__(self):
-        return "Dataset(meta=%s,isSeq=%s,nFeat=%s,N=%s,features=%r,target=%r)" % (self.metafile, self.isSequence, self.nFeatures, self.nInstances, self.features, self.target)
+        return "Dataset(meta=%s,isSeq=%s,nFeat=%s,N=%s,features=%r,target=%r)" % (self.metafile, self.isSequence, self.nAttrs, self.nInstances, self.features, self.target)

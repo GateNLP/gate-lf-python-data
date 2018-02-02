@@ -3,6 +3,7 @@ from gatelfdata import Dataset
 from gatelfdata import Features
 import os
 import sys
+import json
 
 ROOTDIR = os.path.join(os.path.dirname(__file__), '.')
 TESTDIR = os.path.join(ROOTDIR, 'tests')
@@ -21,6 +22,17 @@ file = sys.argv[1]
 ds = Dataset(file)
 
 valset = ds.convert_to_file()
-for b in ds.batches_converted(batch_size=20, as_numpy=False, pad_left=True):
-  print("Batch: len=", len(b))
-  print("Batch: data=", b)
+it = iter(ds.instances_as_string())
+for n in range(20):
+    b = []
+    print("BATCH: ",n)
+    for i in range(2):
+      print("INSTANCE: ",i)
+      instance = next(it)
+      print("Instance: ",instance)
+      converted = ds.convert_instance(json.loads(instance))
+      print("Converted: ",converted)
+      b.append(converted)
+    batch1=ds.reshape_batch(b)
+    print("Size2 batch: ",batch1)
+    print()
