@@ -327,7 +327,7 @@ class Dataset(object):
         ret["maxSequenceLength"] = self.maxSequenceLength
         ret["avgSequenceLength"] = self.avgSequenceLength
         ret["nAttrs"] = self.nAttrs
-        ret["nfeatures"] = self.nFeatures
+        ret["nFeatures"] = self.nFeatures
         ret["nInstances"] = self.nInstances
         ret["targetType"] = self.targetType
         ret["nClasses"] = self.nClasses
