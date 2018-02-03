@@ -91,24 +91,44 @@ class Dataset(object):
         (indep, dep) = instance
         indep_converted = self.convert_indep(indep)
         dep_converted = self.convert_dep(dep)
+        # now normalize the numeric features, if necessary
+        # TODO: ultimately this should depend on the individual settings for each feature, but for
+        # now we simply always normalize all numeric features here
+        assert len(indep_converted) == len(self.meta["features"])
+        ## TODO: the whole normalization code should maybe get factored into separate methods,
+        ## so we can do it separately and maybe also have several methods available.
+        ## In addition to normalization, we may also want to be able to support squashing functions and similar here.
+        for i in range(len(self.meta["features"])):
+            if self.meta["features"][i]["datatype"] == "numeric":
+                # normalize it based on the feature stats
+                fName = self.meta["features"][i]["name"]
+                mean = self.meta["featureStats"][fName]["mean"]
+                var = self.meta["featureStats"][fName]["variance"]
+                # if var is > larger than 0.0 then do normalization by mapping the mean to 0
+                # and normalizing the variance to 1.0
+                if var > 0.0:
+                    val = indep_converted[i]
+                    val = (val - mean)/var
+                    indep_converted[i] = val
         return [indep_converted, dep_converted]
 
     def instances_as_data(self):
         class DataIterable(object):
-            def __init__(self, meta, datafile, features, target):
+            def __init__(self, meta, datafile, features, target, parent):
                 self.meta = meta
                 self.datafile = datafile
                 self.features = features
                 self.target = target
+                self.parent = parent
 
             def __iter__(self):
                 logger = logging.getLogger(__name__)
                 with open(self.datafile, "rt", encoding="utf=8") as inp:
                     for line in inp:
-                        (indep, dep) = json.loads(line)
-                        logger.debug("Dataset read: indep/dep=%r/%r", indep, dep)
-                        yield [self.features(indep), self.target(dep)]
-        return DataIterable(self.meta, self.datafile, self.features, self.target)
+                        instance = json.loads(line)
+                        logger.debug("Dataset read: instance=%r" % instance)
+                        yield self.parent.convert_instance(instance)
+        return DataIterable(self.meta, self.datafile, self.features, self.target, self)
 
     def instances_converted(self, convertedFile=None):
         if not convertedFile:
