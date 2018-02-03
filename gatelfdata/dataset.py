@@ -34,6 +34,12 @@ class Dataset(object):
         return re.sub("\.meta\.json", ".converted.json", metafilename)
 
     @staticmethod
+    def validationset4meta(metafilename):
+        """Given the path to a meta file, return the path to the converted validation set file"""
+        return re.sub("\.meta\.json", ".validation.json", metafilename)
+
+
+    @staticmethod
     def load_meta(metafile):
         with open(metafile, "rt", encoding="utf-8") as inp:
             return json.load(inp)
@@ -68,6 +74,7 @@ class Dataset(object):
             self.targetClasses = None
             self.nClasses = 0
         self.convertedFile = None
+        self.validationsetFile = None
 
     def instances_as_string(self):
         class StringIterable(object):
@@ -129,6 +136,17 @@ class Dataset(object):
                         logger.debug("Dataset read: instance=%r" % instance)
                         yield self.parent.convert_instance(instance)
         return DataIterable(self.meta, self.datafile, self.features, self.target, self)
+
+    def validation_set(self, validationsetFile=None, as_numpy=False, as_batch=False):
+        if not validationsetFile:
+            validationsetFile = self.validationsetFile
+        valset = []
+        with open(validationsetFile, "rt") as inp:
+            for line in inp:
+                valset.append(json.loads(line))
+        if as_batch:
+            valset = self.reshape_batch(valset, as_numpy=as_numpy)
+        return valset
 
     def instances_converted(self, convertedFile=None):
         if not convertedFile:
@@ -293,6 +311,7 @@ class Dataset(object):
         if not outfile:
             outfile = self.converted4meta(self.metafile)
         self.convertedFile = outfile
+        self.validationsetFile = self.validationset4meta(self.metafile)
         logger = logging.getLogger(__name__)
         valinstances = []
         valindices = set()
@@ -310,6 +329,8 @@ class Dataset(object):
             for choice in choices:
                 valindices.add(choice)
         i = 0
+        # TODO: save the validation set file here as well in original converted format
+        # (conversion to the same format as for batches is done after reading it back!!)
         with open(outfile,"w") as out:
             for instance in self.instances_as_data():
                 if i in valindices:
