@@ -193,11 +193,13 @@ class Dataset(object):
         set to True, then both the original and the converted format files are created. Depending on which
         format files are created, subsequent calls to the batches_converted or batches_orig can be made.
         If outdir is specified, the files will get stored in that directory instead of the directory
-        where the meta/data files are stored."""
+        where the meta/data files are stored.
+        If random_seed is set to 0 or None, the random seed generator does not get initialized."""
         logger = logging.getLogger(__name__)
         valindices = set()
         if validation_size or validation_part:
-            np.random.seed(random_seed)
+            if random_seed:
+                np.random.seed(random_seed)
             if validation_size:
                 valsize = int(validation_size)
             else:
