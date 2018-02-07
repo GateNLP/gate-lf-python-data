@@ -357,11 +357,11 @@ class Dataset(object):
         # we will create as many lists for the independent part as we have features
         features_list = []
         targets = []
-        max_seq_lengths = [0 for i in range(self.nAttrs)]
+        max_seq_lengths = [0 for i in range(self.nFeatures)]
         max_target_seq = 0
         n_classes = self.nClasses
         is_sequence = self.isSequence
-        for i in range(self.nAttrs):
+        for i in range(self.nFeatures):
             features_list.append([])
         # we now got a list of empty lists, one empty list for each feature, now put the values
         # of each of the features in the independent part in there.
@@ -369,7 +369,7 @@ class Dataset(object):
             (indep, dep) = instance
             # print("DEBUG: len(indep)=%r, nFeature=%r" % (len(indep), self.nFeatures))
             assert len(indep) == self.nFeatures
-            for i in range(self.nAttrs):
+            for i in range(self.nFeatures):
                 fv = indep[i]
                 if isinstance(fv, list):
                     l = len(fv)
@@ -387,7 +387,7 @@ class Dataset(object):
             # We start with a list of nFeatures features, each represented as a list
             # if that list contains itself lists, i.e. max_seq_lengths for it is > 0,
             # then convert that list of lists into a numpy matrix
-            for i in range(self.nAttrs):
+            for i in range(self.nFeatures):
                 if max_seq_lengths[i] > 0:
                     # this feature is represented as batchsize sublists
                     values = features_list[i]
