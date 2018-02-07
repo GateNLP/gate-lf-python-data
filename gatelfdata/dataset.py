@@ -5,7 +5,6 @@ from io import open    # use with open("asas",'rt',encoding='utf-8')
 import re
 import os
 import logging
-import sys
 from .features import Features
 from .target import Target
 

@@ -1,14 +1,5 @@
-from __future__ import print_function
-from __future__ import with_statement
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
 from builtins import *
-import json
-from io import open    # use with open("asas",'rt',encoding='utf-8')
 from collections import Counter, OrderedDict, defaultdict
-import re
-import numpy as np
 
 
 # OK, the protocol for using this is this:

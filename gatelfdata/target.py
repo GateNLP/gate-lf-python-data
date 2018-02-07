@@ -1,5 +1,5 @@
-import sys
 from . targetnominal import TargetNominal
+
 
 class Target(object):
     def __init__(self, *args):

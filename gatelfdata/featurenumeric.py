@@ -1,8 +1,7 @@
-from __future__ import print_function
-import sys
 # This represents a simple numeric attribute
 
 # TODO: implement (optional?) scaling!
+# NOTE: automatic scaling is currently done in the Dataset class, should move here!!
 
 class FeatureNumeric(object):
 

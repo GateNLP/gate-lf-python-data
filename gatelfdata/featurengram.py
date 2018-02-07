@@ -1,7 +1,6 @@
-from __future__ import print_function
-import sys
 import logging
 from . vocabs import Vocabs
+
 
 class FeatureNgram(object):
     """Represents an ngram attribute. The value of such an attribute is a list/sequence of

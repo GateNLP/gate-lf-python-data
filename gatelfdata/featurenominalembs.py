@@ -1,10 +1,9 @@
-from __future__ import print_function
-import sys
 from . vocabs import Vocabs
 import logging
 
 # This represents a simple nominal (string) attribute that should
 # get encoded as a dense embedding vector
+
 
 class FeatureNominalEmbs(object):
 
@@ -17,7 +16,6 @@ class FeatureNominalEmbs(object):
         self.attrinfo = attrinfo
         self.featurestats = featurestats
         self.vocab = Vocabs.get_vocab(attrinfo)
-
 
     def __call__(self, value):
         """Convert a value of the expected type for this feature to a value that can be

@@ -1,4 +1,3 @@
-from __future__ import print_function
 from . featurenominal1ofk import FeatureNominal1ofk
 from . featurenumeric import FeatureNumeric
 from . featurenominalembs import FeatureNominalEmbs

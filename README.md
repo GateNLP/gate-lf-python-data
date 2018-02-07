@@ -12,6 +12,12 @@ Main functionality:
 * Iterate over batches of data, either in original format or in converted format
 * Reshape batches into "features-first" format
 
+## Requirements
+
+Requirements:
+* Python 3 - this does not work with python 2.x!
+* Python package `numpy`
+
 ## Usage examples
 
 The following code shows how to get the validation set and how to iterate

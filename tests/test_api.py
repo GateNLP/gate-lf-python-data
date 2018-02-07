@@ -1,4 +1,3 @@
-from __future__ import print_function
 from gatelfdata.dataset import Dataset
 from gatelfdata.features import Vocabs
 from gatelfdata.features import Features

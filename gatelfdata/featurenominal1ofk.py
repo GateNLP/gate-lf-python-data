@@ -1,10 +1,9 @@
-from __future__ import print_function
-import sys
 from . vocabs import Vocabs
 import logging
 
 # This represents a simple nominal (string) attribute that should
 # get encoded as a one-hot vector of values
+
 
 class FeatureNominal1ofk(object):
 

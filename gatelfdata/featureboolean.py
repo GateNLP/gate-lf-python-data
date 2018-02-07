@@ -1,7 +1,6 @@
-from __future__ import print_function
-import sys
 import logging
 # This represents a simple boolean attribute
+
 
 class FeatureBoolean(object):
 
