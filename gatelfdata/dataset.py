@@ -1,18 +1,11 @@
-from __future__ import print_function
-from __future__ import with_statement
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
 from builtins import *
 import json
 import numpy as np
 from io import open    # use with open("asas",'rt',encoding='utf-8')
-# from collections import Counter, OrderedDict
-# ?? from future.builtins.disabled import *
 import re
-import sys
+import os
 import logging
-
+import sys
 from .features import Features
 from .target import Target
 
@@ -28,26 +21,37 @@ class Dataset(object):
         """Given the path to a meta file, return the path to a data file"""
         return re.sub("\.meta\.json", ".data.json", metafilename)
 
-    @staticmethod
-    def converted4meta(metafilename):
-        """Given the path to a meta file, return the path to the converted data file"""
-        return re.sub("\.meta\.json", ".converted.json", metafilename)
+    def modified4meta(self, dir=None, name_part=None):
+        """Helper method to construct the full path of one of the files this class creates from
+        the original meta/data files. If dir is given, then it is the containing directory for the file.
+        The name_part parameter specifies the part in the file name that will replace the "meta"
+        in the original metafilename."""
+        if not name_part:
+            raise Exception("Parameter name_part must be specified")
+        path, name = os.path.split(self.metafile)
+        newname = re.sub("\.meta\.json", "."+name_part+".json", name)
+        if dir:
+            pathdir = dir
+        else:
+            pathdir = path
+        newpath = os.path.join(pathdir, newname)
+        return newpath
 
-    @staticmethod
-    def validationset4meta(metafilename):
-        """Given the path to a meta file, return the path to the converted validation set file"""
-        return re.sub("\.meta\.json", ".validation.json", metafilename)
 
 
     @staticmethod
     def load_meta(metafile):
+        """Static method for just reading and returning the meta data for this dataset."""
         with open(metafile, "rt", encoding="utf-8") as inp:
             return json.load(inp)
 
     def __init__(self, metafile):
+        """Creating an instance will read the metadata and create the converters for
+        converting the instances from the original data format (which contains the original
+        values and strings) to a converted representation where strings are replaced by
+        word indices related to a vocabulary."""
         self.metafile = metafile
-        with open(metafile, "rt", encoding="utf-8") as inp:
-            self.meta = json.load(inp)
+        self.meta = Dataset.load_meta(metafile)
         # we do not use the dataFile field because this will be invalid
         # if the files have been moved from their original location
         # self.datafile = self.meta["dataFile"]
@@ -73,10 +77,22 @@ class Dataset(object):
             self.targetType = "numeric"
             self.targetClasses = None
             self.nClasses = 0
-        self.convertedFile = None
-        self.validationsetFile = None
+        self.have_conv_split = False
+        self.have_orig_split = False
+        self.outdir = None
+        self.orig_train_file = None
+        self.orig_val_file = None
+        self.converted_train_file = None
+        self.converted_val_file = None
+        self.converted_data_file = None
 
-    def instances_as_string(self):
+    def instances_as_string(self, train=False, file=None):
+        """Returns an iterable that allows to read the original instance data rows as a single string.
+        That string can be converted into the actual original representation by parsing it as json.
+        If train is set to True, then instead of the original data file, the train file created
+        with the split() method is used. If file is not None, train is ignored and the file specified
+        is read instead.
+        """
         class StringIterable(object):
             def __init__(self, datafile):
                 self.datafile = datafile
@@ -85,47 +101,213 @@ class Dataset(object):
                 with open(self.datafile, "rt", encoding="utf=8") as inp:
                     for line in inp:
                         yield line
-        return StringIterable(self.datafile)
+        if file:
+            whichfile = file
+        else:
+            if train:
+                if not self.have_orig_split:
+                    raise Exception("We do not have a train file in original format for instances_as_string")
+                whichfile = self.orig_train_file
+            else:
+                whichfile = self.datafile
+        return StringIterable(whichfile)
 
-    def convert_indep(self, indep):
-        return self.features(indep)
+    def instances_original(self, train=False, file=None):
+        """Returns an iterable that allows to read the instances from a file in original format.
+        This file is the original data file by default, but could also the train file created with
+        the split() method or any other file derived from the original data file."""
+        class StringIterable(object):
+            def __init__(self, datafile):
+                self.datafile = datafile
+
+            def __iter__(self):
+                with open(self.datafile, "rt", encoding="utf=8") as inp:
+                    for line in inp:
+                        yield json.loads(line, encoding="UTF-8")
+        if file:
+            whichfile = file
+        else:
+            if train:
+                if not self.have_orig_split:
+                    raise Exception("We do not have a train file in original format for instances_as_string")
+                whichfile = self.orig_train_file
+            else:
+                whichfile = self.datafile
+        return StringIterable(whichfile)
+
+    def normalize_features(self, indep, normalize="meanvar"):
+        """This normalizes the converted features (indep) according to the giving normalization strategy.
+        The features must correspond to the features described in the meta data, i.e. the indep parameter
+        has to contain the exact independent part of an instance."""
+        assert len(indep) == len(self.meta["features"])
+        # TODO: We may also want to be able to support squashing functions and similar here.
+        if normalize=="meanvar":
+            for i in range(len(self.meta["features"])):
+                if self.meta["features"][i]["datatype"] == "numeric":
+                    # normalize it based on the feature stats
+                    fname = self.meta["features"][i]["name"]
+                    mean = self.meta["featureStats"][fname]["mean"]
+                    var = self.meta["featureStats"][fname]["variance"]
+                    # if var is > larger than 0.0 then do normalization by mapping the mean to 0
+                    # and normalizing the variance to 1.0
+                    if var > 0.0:
+                        val = indep[i]
+                        val = (val - mean)/var
+                        indep[i] = val
+        return indep
+
+    def convert_indep(self, indep, normalize=None):
+        """Convert the independent part of an original representation into the converted representation
+        where strings are replaced by word indices or one hot vectors. If normalize is set to "meanvar", then
+        normalization is performed based on the mean/variance statistics for the feature. If it is set to None,
+        no normalization is performed.
+        [NOT YET: if normalize is set to "config" then normalization is performed as configured for the feature]"""
+        converted = self.features(indep)
+        if normalize:
+            converted = self.normalize_features(converted, normalize=normalize)
+        return converted
 
     def convert_dep(self, dep):
+        """Convert the dependent part of an original representation into the converted representation
+        where strings are replaced by one hot vectors."""
         return self.target(dep)
 
-    def convert_instance(self, instance):
-        """Convert a list representation as read from json to the final representation"""
+    def convert_instance(self, instance, normalize="meanvar"):
+        """Convert an original representation of an instance as read from json to the converted representation.
+        This will also by default automatically normalize all numeric features, this can be changed by setting
+        the normalize parameter (see convert_indep).
+        Note: if the instance is a string, it is assumed it is still in json format and will get converted first."""
+        if isinstance(instance, str):
+            instance = json.loads(instance, encoding="utf=8")
         (indep, dep) = instance
-        indep_converted = self.convert_indep(indep)
+        indep_converted = self.convert_indep(indep,normalize=normalize)
         dep_converted = self.convert_dep(dep)
-        # now normalize the numeric features, if necessary
-        # TODO: ultimately this should depend on the individual settings for each feature, but for
-        # now we simply always normalize all numeric features here
-        assert len(indep_converted) == len(self.meta["features"])
-        ## TODO: the whole normalization code should maybe get factored into separate methods,
-        ## so we can do it separately and maybe also have several methods available.
-        ## In addition to normalization, we may also want to be able to support squashing functions and similar here.
-        for i in range(len(self.meta["features"])):
-            if self.meta["features"][i]["datatype"] == "numeric":
-                # normalize it based on the feature stats
-                fName = self.meta["features"][i]["name"]
-                mean = self.meta["featureStats"][fName]["mean"]
-                var = self.meta["featureStats"][fName]["variance"]
-                # if var is > larger than 0.0 then do normalization by mapping the mean to 0
-                # and normalizing the variance to 1.0
-                if var > 0.0:
-                    val = indep_converted[i]
-                    val = (val - mean)/var
-                    indep_converted[i] = val
         return [indep_converted, dep_converted]
 
-    def instances_as_data(self):
+    def split(self, outdir=None, validation_size=None, validation_part=0.1, random_seed=1, convert=False, keep_orig=False):
+        """This splits the original file into an actual training file and a validation set file.
+        This creates two new files in the same location as the original files, with the "data"/"meta"
+        parts of the name replaced with "val" for validation and "train" for training. If converted is
+        set to True, then instead of the original data, the converted data is getting split and
+        saved, in that case the name parts are "converted.var" and "coverted.train". If keep_orig is
+        set to True, then both the original and the converted format files are created. Depending on which
+        format files are created, subsequent calls to the batches_converted or batches_orig can be made.
+        If outdir is specified, the files will get stored in that directory instead of the directory
+        where the meta/data files are stored."""
+        logger = logging.getLogger(__name__)
+        valindices = set()
+        if validation_size or validation_part:
+            np.random.seed(random_seed)
+            if validation_size:
+                valsize = int(validation_size)
+            else:
+                valsize = int(self.nInstances * validation_part)
+            if valsize <= 1 or valsize > int(self.nInstances/ 2.0):
+                raise Exception("Validation set size should not be less than 1 or more than half the data, but is %s (n=%s)" % (valsize, self.nInstances))
+            # now get valsize integers from the range 0 to nInstances-1: these are the instance indices
+            # we want to reserve for the validation set
+            choices = np.random.choice(self.nInstances, size=valsize, replace=False)
+            logger.debug("convert_to_file, nInst=%s, valsize=%s, choices=%s" % (self.nInstances, valsize, len(choices)))
+            for choice in choices:
+                valindices.add(choice)
+        else:
+            # we just keep the empy valindices set
+            pass
+        origtrainfile = self.modified4meta(name_part="orig.train", dir=outdir)
+        origvalfile = self.modified4meta(name_part="orig.val", dir=outdir)
+        convtrainfile = self.modified4meta(name_part="converted.train", dir=outdir)
+        convvalfile = self.modified4meta(name_part="converted.val", dir=outdir)
+        outorigtrain = None
+        outorigval = None
+        outconvtrain = None
+        outconvval = None
+        if not convert or (convert and keep_orig):
+            self.have_orig_split = True
+            outorigtrain = open(origtrainfile, "w", encoding="utf-8")
+            self.orig_train_file = origtrainfile
+            outorigval = open(origvalfile, "w", encoding="utf-8")
+            self.orig_val_file = origvalfile
+        if convert:
+            self.have_conv_split = True
+            outconvtrain = open(convtrainfile, "w", encoding="utf-8")
+            self.converted_train_file = convtrainfile
+            outconvval = open(convvalfile, "w", encoding="utf-8")
+            self.converted_val_file = convvalfile
+        self.outdir = outdir
+        i = 0
+        for line in self.instances_as_string():
+            if convert:
+                converted = self.convert_instance(line)
+            else:
+                converted = None
+            if i in valindices:
+                if outorigval:
+                    print(line, file=outorigval, end="")
+                if outconvval:
+                    print(converted, file=outconvval)
+            else:
+                if outorigtrain:
+                    print(line, file=outorigtrain, end="")
+                if outconvtrain:
+                    print(converted, file=outconvtrain)
+        if outorigtrain:
+            outorigtrain.close()
+        if outorigval:
+            outorigval.close()
+        if outconvtrain:
+            outconvtrain.close()
+        if outconvval:
+            outconvval.close()
+
+    def convert_to_file(self, outfile=None, infile=None):
+        """Copy the whole data file (or if infile is not None, that file) to a converted version.
+        The default file name is used if outfile is None, otherwise the file specified is used."""
+        if not outfile:
+            outfile = self.modified4meta(name_part="converted.data")
+        self.converted_data_file = outfile
+        logger = logging.getLogger(__name__)
+        with open(outfile, "w") as out:
+            for instance in self.instances_converted(train=False, convert=True):
+                print(json.dumps(instance), file=out)
+
+    def validation_set_orig(self):
+        """Read and return the validation set rows in original format. For this to work, the split()
+        method must have been run and either convert have been False or convert True and keep_orig True."""
+        if not self.have_orig_split:
+            raise Exception("We do not have the splitted original file, run the split method.")
+        validationsetfile = self.modified4meta(name_part="orig.val", dir=self.outdir)
+        valset = []
+        with open(validationsetfile, "rt") as inp:
+            for line in inp:
+                valset.append(json.loads(line))
+        return valset
+
+    def validation_set_converted(self, as_numpy=False, as_batch=False):
+        """Read and return the validation set instances in converted format, optionally converted to
+        batch format and if in batch format, optionally with numpy arrays. Fir this to work the split()
+        method must have been run before with convert set to True."""
+        if not self.have_conv_split:
+            raise Exception("We do not have the splitted converted file, run the split method.")
+        validationsetfile = self.modified4meta(name_part="orig.val", dir=self.outdir)
+        valset = []
+        with open(validationsetfile, "rt") as inp:
+            for line in inp:
+                valset.append(json.loads(line))
+        if as_batch:
+            valset = self.reshape_batch(valset, as_numpy=as_numpy)
+        return valset
+
+    def instances_converted(self, train=True, file=None, convert=False):
+        """This reads instances and returns them in converted format. The instances are either
+        read from a file in original format and converted on the fly (convert=True) or from a file
+        that has already been converted as e.g. created with the split() or copy_to_converted() methods.
+        If the file parameter is not None, then that file is read, otherwise if the train parameter is
+        False then the original data file is read, otherwise if the train parameter is True, the
+        train file is read."""
         class DataIterable(object):
-            def __init__(self, meta, datafile, features, target, parent):
+            def __init__(self, meta, datafile, parent, convert):
                 self.meta = meta
                 self.datafile = datafile
-                self.features = features
-                self.target = target
                 self.parent = parent
 
             def __iter__(self):
@@ -134,37 +316,31 @@ class Dataset(object):
                     for line in inp:
                         instance = json.loads(line)
                         logger.debug("Dataset read: instance=%r" % instance)
-                        yield self.parent.convert_instance(instance)
-        return DataIterable(self.meta, self.datafile, self.features, self.target, self)
-
-    def validation_set(self, validationsetFile=None, as_numpy=False, as_batch=False):
-        if not validationsetFile:
-            validationsetFile = self.validationsetFile
-        valset = []
-        with open(validationsetFile, "rt") as inp:
-            for line in inp:
-                valset.append(json.loads(line))
-        if as_batch:
-            valset = self.reshape_batch(valset, as_numpy=as_numpy)
-        return valset
-
-    def instances_converted(self, convertedFile=None):
-        if not convertedFile:
-            convertedFile = self.convertedFile
-
-        class ConvertedIterable(object):
-
-            def __init__(self, convertedFile):
-                self.convertedFile = convertedFile
-
-            def __iter__(self):
-                logger = logging.getLogger(__name__)
-                with open(self.convertedFile, "rt") as inp:
-                    for line in inp:
-                        converted = json.loads(line)
-                        logger.debug("Converted read: %r", converted)
-                        yield converted
-        return ConvertedIterable(convertedFile)
+                        if convert:
+                            yield self.parent.convert_instance(instance)
+                        else:
+                            yield instance
+        if file:
+            whichfile = file
+        else:
+            if train:
+                if convert:
+                    if not self.have_orig_split:
+                        raise Exception("We do not have a train file in original format for instances_as_string")
+                    whichfile = self.orig_train_file
+                else:
+                    if not self.have_conv_split:
+                        raise Exception("We do not have a train file in converted format for instances_as_string")
+                    whichfile = self.converted_train_file
+            else:
+                if convert:
+                    whichfile = self.datafile
+                else:
+                    if self.converted_data_file:
+                        whichfile = self.converted_data_file
+                    else:
+                        raise Exception("We do not have a data file in converted format for instance_as_string")
+        return DataIterable(self.meta, whichfile, self, convert=convert)
 
     def reshape_batch(self, instances, as_numpy=False, pad_left=False):
         """Reshape the list of converted instances into what is expected for training on a batch.
@@ -179,8 +355,8 @@ class Dataset(object):
         targets = []
         max_seq_lengths = [0 for i in range(self.nAttrs)]
         max_target_seq = 0
-        nClasses = self.nClasses
-        isSequence = self.isSequence
+        n_classes = self.nClasses
+        is_sequence = self.isSequence
         for i in range(self.nAttrs):
             features_list.append([])
         # we now got a list of empty lists, one empty list for each feature, now put the values
@@ -197,7 +373,7 @@ class Dataset(object):
                         max_seq_lengths[i] = l
                 features_list[i].append(fv)
             targets.append(dep)
-            if isSequence:
+            if is_sequence:
                 l = len(dep)
                 if l > max_target_seq:
                     max_target_seq = l
@@ -236,12 +412,12 @@ class Dataset(object):
             # - a list of one-hot lists, in case of sequence tagging
             # - (not yet:) a numeric target, a single float value
             if as_numpy:
-                if nClasses == 0:
+                if n_classes == 0:
                     arr = np.array(targets, np.float_)
-                elif isSequence:
+                elif is_sequence:
                     # sequence tagging, nominal classes: we need to create an array of
                     # shape batchsize, maxseq, nclasses and fill in the values either left or right padded
-                    arr = np.zeros((batch_size, max_target_seq, nClasses), np.float_)
+                    arr = np.zeros((batch_size, max_target_seq, n_classes), np.float_)
                     # fill in the values for each instance
                     for j in range(batch_size):
                         v = targets[j]
@@ -256,9 +432,62 @@ class Dataset(object):
         ret = (features_list, targets)
         return ret
 
+    def batches_original(self, train=True, file=None, reshape=True, convert=False, batch_size=100, pad_left=False):
+        """Return a batch of instances in original format for training.
+        """
+        class BatchOrigIterable(object):
 
-    def batches_converted(self, convertedFile=None, batch_size=100, as_numpy=False, pad_left=False):
-        """Return a batch of instances for training. This reshapes the data in the following ways:
+            def __init__(self, thefile, batchsize, parent):
+                self.file = thefile
+                self.batchsize = batchsize
+                self.parent = parent
+
+            def __iter__(self):
+                logger = logging.getLogger(__name__)
+                with open(self.file, "rt", encoding="utf-8") as inp:
+                    while True:
+                        collect = []
+                        eof = False
+                        for i in range(self.batchsize):
+                            line = inp.readline()
+                            if line:
+                                instance = json.loads(line)
+                                collect.append(instance)
+                                logger.debug("BatchOrig read: %r", instance)
+                            else:
+                                eof = True
+                                break
+                        if reshape:
+                            batch = self.parent.reshape_batch(collect, pad_left=pad_left)
+                        else:
+                            batch = collect
+                        yield batch
+                        if eof:
+                            break
+        if file:
+            whichfile = file
+        else:
+            if train:
+                if convert:
+                    if not self.have_orig_split:
+                        raise Exception("We do not have a train file in original format for batches_converted")
+                    whichfile = self.orig_train_file
+                else:
+                    if not self.have_conv_split:
+                        raise Exception("We do not have a train file in converted format for batches_converted")
+                    whichfile = self.converted_train_file
+            else:
+                if convert:
+                    whichfile = self.datafile
+                else:
+                    if self.converted_data_file:
+                        whichfile = self.converted_data_file
+                    else:
+                        raise Exception("We do not have a data file in converted format for batches_converted")
+        return BatchOrigIterable(whichfile, batch_size, self)
+
+    def batches_converted(self, train=True, file=None, reshape=True, convert=False, batch_size=100, as_numpy=False, pad_left=False):
+        """Return a batch of instances for training. If reshape is True, this reshapes the data in the following ways:
         For classification, the independent part is a list of batchsize values for each feature. So for
         a batch size of 100 and 18 features, the inputs are a list of 18 lists of 100 values each.
         If the feature itself is a sequence (i.e. comes from an ngram), then the list corresponding
@@ -266,20 +495,18 @@ class Dataset(object):
         For sequence tagging, the independent part is a list of features, where each of the per-feature lists
         contains 100 (batch size) elements, and each of these elements is a list with as many elements
         as the corresponding sequence contains.
+        If reshape is True (the default), then the batch gets reshaped using the reshape_batch method.
         """
-        if not convertedFile:
-            convertedFile = self.convertedFile
+        class BatchConvertedIterable(object):
 
-        class BatchIterable(object):
-
-            def __init__(self, convertedFile, batchsize, parent):
-                self.convertedFile = convertedFile
+            def __init__(self, convertedfile, batchsize, parent):
+                self.convertedfile = convertedfile
                 self.batchsize = batchsize
                 self.parent = parent
 
             def __iter__(self):
                 logger = logging.getLogger(__name__)
-                with open(self.convertedFile, "rt") as inp:
+                with open(self.convertedfile, "rt", encoding="utf-8") as inp:
                     while True:
                         collect = []
                         eof = False
@@ -287,58 +514,41 @@ class Dataset(object):
                             line = inp.readline()
                             if line:
                                 converted = json.loads(line)
+                                if convert:
+                                    converted = self.parent.convert_instance(converted)
                                 collect.append(converted)
                                 logger.debug("Batch read: %r", converted)
                             else:
                                 eof = True
                                 break
-                        batch = self.parent.reshape_batch(collect, as_numpy=as_numpy, pad_left=pad_left)
+                        if reshape:
+                            batch = self.parent.reshape_batch(collect, as_numpy=as_numpy, pad_left=pad_left)
+                        else:
+                            batch = collect
                         yield batch
                         if eof:
                             break
-        return BatchIterable(convertedFile, batch_size, self)
-
-
-
-    # TODO: return the validation set already re-shaped so it looks the same shape as a batch!
-    # Also, allow to return it in numpy format with padding etc. Use the public method for converting from
-    # one to the other for this!!
-    def convert_to_file(self, outfile=None, return_validationset=True, validation_size=None, validation_part=0.1, random_seed=1):
-        """Convert the whole data file to the given output file. If return_validationset is true, returns a list
-        of converted instances for the validation set which are not written to the output file. If this is done,
-        the size of the validation set as well as the random seed for selecting the instances can be specified.
-        If validation_size is specified, it takes precedence over validation_part."""
-        if not outfile:
-            outfile = self.converted4meta(self.metafile)
-        self.convertedFile = outfile
-        self.validationsetFile = self.validationset4meta(self.metafile)
-        logger = logging.getLogger(__name__)
-        valinstances = []
-        valindices = set()
-        if return_validationset:
-            if validation_size:
-                valsize = int(validation_size)
-            else:
-                valsize = int(self.nInstances * validation_part)
-            if valsize <= 1 or valsize > int(self.nInstances/ 2.0):
-                raise Exception("Validation set size should not be less than 1 or more than half the data, but is %s (n=%s)" % (valsize, self.nInstances))
-            # now get valsize integers from the range 0 to nInstances-1: these are the instance indices
-            # we want to reserve for the validation set
-            choices = np.random.choice(self.nInstances, size=valsize, replace=False)
-            logger.debug("convert_to_file, nInst=%s, valsize=%s, choices=%s" % (self.nInstances, valsize, len(choices)))
-            for choice in choices:
-                valindices.add(choice)
-        i = 0
-        # TODO: save the validation set file here as well in original converted format
-        # (conversion to the same format as for batches is done after reading it back!!)
-        with open(outfile,"w") as out:
-            for instance in self.instances_as_data():
-                if i in valindices:
-                    valinstances.append(instance)
+        if file:
+            whichfile = file
+        else:
+            if train:
+                if convert:
+                    if not self.have_orig_split:
+                        raise Exception("We do not have a train file in original format for batches_converted")
+                    whichfile = self.orig_train_file
                 else:
-                    print(json.dumps(instance), file=out)
-                i += 1
-        return valinstances
+                    if not self.have_conv_split:
+                        raise Exception("We do not have a train file in converted format for batches_converted")
+                    whichfile = self.converted_train_file
+            else:
+                if convert:
+                    whichfile = self.datafile
+                else:
+                    if self.converted_data_file:
+                        whichfile = self.converted_data_file
+                    else:
+                        raise Exception("We do not have a data file in converted format for batches_converted")
+        return BatchConvertedIterable(whichfile, batch_size, self)
 
     def get_info(self):
         """Return a concise description of the learning problem that makes it easier to understand

@@ -7,7 +7,7 @@ import sys
 import logging
 
 logger = logging.getLogger("gatelfdata")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.ERROR)
 streamhandler = logging.StreamHandler()
 formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
@@ -60,7 +60,7 @@ class Tests4Features1test1(unittest.TestCase):
         features = Features(ds.meta)
         s = features.size()
         assert s == 34
-        it1 = iter(ds.instances_as_data())
+        it1 = iter(ds.instances_converted(train=False, convert=True))
         rec = next(it1)
         logger.info("TESTFILE1 info=%r" % ds.get_info())
         logger.info("TESTFILE1 rec1=%r" % rec)
@@ -71,6 +71,7 @@ class Tests4Features1test1(unittest.TestCase):
         # the dep part is the encoding for two nominal classes, we use
         # a one-hot encoding always for now, so this should be a vector
         # of length 2
+        print("DEBUG: test_t2 dep=", dep, file=sys.stderr)
         assert len(dep) == 2
 
     def test_t3(self):
@@ -88,7 +89,7 @@ class Tests4Features1test1(unittest.TestCase):
         assert len(ngram1) == 6
         assert ngram1[0] == 3542
         assert ngram1[1] == 8
-        it1 = iter(ds.instances_as_data())
+        it1 = iter(ds.instances_converted(train=False, convert=True))
         rec = next(it1)
         logger.info("TESTFILE2 rec1=%r", rec)
         logger.info("TESTFILE2 info=%r" % ds.get_info())
@@ -99,8 +100,9 @@ class Tests4Features1test1(unittest.TestCase):
         assert ngram1_it[0] == 3542
         assert ngram1_it[1] == 8
         assert len(dep1_it) == 2
-        # test converting the dataset and getting the validation set
-        valset = ds.convert_to_file("test_api_converted2.json")
+        # test splitting the dataset and getting the validation set
+        ds.split(convert=True)
+        valset = ds.validation_set_converted()
         logger.info("TESTFILE2 valsetsize=%r" % len(valset))
 
     def test_t4(self):
@@ -109,7 +111,7 @@ class Tests4Features1test1(unittest.TestCase):
         logger.info("TESTFILE3 attrs=%r", ds.meta.get("featureInfo").get("attributes"))
         features = Features(ds.meta)
         logger.info("TESTFILE3 features=%r", features)
-        it1 = iter(ds.instances_as_data())
+        it1 = iter(ds.instances_original())
         rec = next(it1)
         logger.info("TESTFILE3 rec1=%r", rec)
         logger.info("TESTFILE3 info=%r" % ds.get_info())
@@ -126,7 +128,7 @@ class Tests4Features1test1(unittest.TestCase):
     def test_t5(self):
         logger.info("Running Tests4Features1test1/test_t4")
         ds = Dataset(TESTFILE4)
-        it1 = iter(ds.instances_as_data())
+        it1 = iter(ds.instances_converted(train=False, convert=True))
         rec = next(it1)
 
         indep, dep = rec
