@@ -41,6 +41,10 @@ class Vocabs(object):
         else:
             raise Exception("No vocab for emb_id: %s got %s" % (emb_id, cls.vocabs.keys()))
 
+    @classmethod
+    def init(cls):
+        cls.vocabs = {}
+
     def __str__(self):
         return "Vocabs()"
 

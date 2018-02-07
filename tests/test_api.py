@@ -1,5 +1,6 @@
 from __future__ import print_function
 from gatelfdata.dataset import Dataset
+from gatelfdata.features import Vocabs
 from gatelfdata.features import Features
 import unittest
 import os
@@ -24,6 +25,7 @@ TESTFILE1 = os.path.join(DATADIR, "class-ionosphere.meta.json")
 TESTFILE2 = os.path.join(DATADIR, "class-ngram-sp1.meta.json")
 TESTFILE3 = os.path.join(DATADIR, "class-window-pos1.meta.json")
 TESTFILE4 = os.path.join(DATADIR, "seq-pos1.meta.json")
+
 
 class TestVocab1(unittest.TestCase):
 
@@ -71,12 +73,21 @@ class Tests4Features1test1(unittest.TestCase):
         # the dep part is the encoding for two nominal classes, we use
         # a one-hot encoding always for now, so this should be a vector
         # of length 2
-        print("DEBUG: test_t2 dep=", dep, file=sys.stderr)
+        # print("DEBUG: test_t2 dep=", dep, file=sys.stderr)
         assert len(dep) == 2
+        Vocabs.init()
 
     def test_t3(self):
         logger.info("Running Tests4Features1test1/test_t3")
         ds = Dataset(TESTFILE2)
+
+        it0 = iter(ds.instances_original())
+        inst0 = next(it0)
+        indep, dep = inst0
+        # print("DEBUG: indep=", indep, file=sys.stderr)
+        assert indep == [['invincible', 'is', 'a', 'wonderful', 'movie', '.']]
+        assert dep == "pos"
+
 
         # check low level conversion methods first
         inst1 = [[['invincible', 'is', 'a', 'wonderful', 'movie', '.']], 'pos']
@@ -100,10 +111,7 @@ class Tests4Features1test1(unittest.TestCase):
         assert ngram1_it[0] == 3542
         assert ngram1_it[1] == 8
         assert len(dep1_it) == 2
-        # test splitting the dataset and getting the validation set
-        ds.split(convert=True)
-        valset = ds.validation_set_converted()
-        logger.info("TESTFILE2 valsetsize=%r" % len(valset))
+        Vocabs.init()
 
     def test_t4(self):
         logger.info("Running Tests4Features1test1/test_t4")
@@ -124,9 +132,10 @@ class Tests4Features1test1(unittest.TestCase):
         # a one-hot encoding always for now, so this should be a vector
         # of length 2
         # assert len(dep) == 2
+        Vocabs.init()
 
     def test_t5(self):
-        logger.info("Running Tests4Features1test1/test_t4")
+        logger.info("Running Tests4Features1test1/test_t5")
         ds = Dataset(TESTFILE4)
         it1 = iter(ds.instances_converted(train=False, convert=True))
         rec = next(it1)
@@ -151,6 +160,62 @@ class Tests4Features1test1(unittest.TestCase):
         assert t12 == "ADJ"
         t13 = ds.target.vocab.onehot2string(dep3)
         assert t13 == "ADJ"
+        Vocabs.init()
+
+    def test_t6(self):
+        logger.info("Running Tests4Features1test1/test_t6")
+        ds = Dataset(TESTFILE2)
+        ds.split(convert=True, keep_orig=True, validation_size=3, random_seed=1)
+        # check if getting the batches and validation sets works
+        valset_orig = ds.validation_set_orig()
+        # print("DEBUG: valset_orig=%s" % valset_orig, file=sys.stderr)
+        assert len(valset_orig) == 3
+        vorigi2 = valset_orig[1]
+        assert vorigi2 == [[['a', 'very', 'well-made', ',', 'funny', 'and', 'entertaining', 'picture', '.']], 'pos']
+        valset_conv = ds.validation_set_converted()
+        # print("DEBUG: valset_conv=%s" % valset_conv, file=sys.stderr)
+        assert len(valset_conv) == 3
+        vconvi2 = valset_conv[1]
+
+        assert vconvi2 == [[[4, 83, 1529, 3, 74, 5, 189, 174, 1]], [0.0, 1.0]]
+        valset_conv_b = ds.validation_set_converted(as_batch=True)
+        # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
+        # we expect a tuple for indep and dep
+        assert len(valset_conv_b) == 2
+        indep1, dep1 = valset_conv_b
+        # the indep part should now have lenth one because there is only one features
+        assert len(indep1) == 1
+        # there should be 3 values for that first feature
+        assert len(indep1[0]) == 3
+        # get a batch of original data
+        bitb1 = ds.batches_original(train=True, batch_size=4, reshape=False)
+        batch_orig1 = next(iter(bitb1))
+        # print("DEBUG: batch_orig1=%s" % (batch_orig1,), file=sys.stderr)
+        # if reshape was False, this is just a list of instances in original format
+        assert len(batch_orig1) == 4
+        assert batch_orig1[1] == [[['rife', 'with', 'nutty', 'cliches', 'and', 'far', 'too', 'much', 'dialogue', '.']], 'neg']
+        bitb2 = ds.batches_original(train=True, batch_size=4, reshape=True)
+        batch_orig2 = next(iter(bitb2))
+        # print("DEBUG: batch_orig2=%s" % (batch_orig2,), file=sys.stderr)
+        # if reshape was True, this is a tuple where the first element is the list of features
+        assert len(batch_orig2) == 2
+        featurelist1 = batch_orig2[0]
+        feature1 = featurelist1[0]
+        assert feature1[1] == ['rife', 'with', 'nutty', 'cliches', 'and', 'far', 'too', 'much', 'dialogue', '.']
+        bconvb1 = ds.batches_converted(train=True, batch_size=4, reshape=False)
+        batch_conv1 = next(iter(bconvb1))
+        # print("DEBUG: batch_conv1=%s" % (batch_conv1,), file=sys.stderr)
+        assert len(batch_conv1) == 4
+        assert batch_conv1[1] ==[[[6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1]], [1.0, 0.0]]
+        bconvb2 = ds.batches_converted(train=True, batch_size=4, reshape=True)
+        batch_conv2 = next(iter(bconvb2))
+        # print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)
+        assert len(batch_conv2) == 2
+        featurelist1 = batch_conv2[0]
+        feature1 = featurelist1[0]
+        assert feature1[1] ==[6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1]
+        Vocabs.init()
+
 
 if __name__ == '__main__':
     unittest.main()

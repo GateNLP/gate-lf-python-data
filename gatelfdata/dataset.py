@@ -210,6 +210,7 @@ class Dataset(object):
             logger.debug("convert_to_file, nInst=%s, valsize=%s, choices=%s" % (self.nInstances, valsize, len(choices)))
             for choice in choices:
                 valindices.add(choice)
+            # print("DEBUG: valindices=%s" % valindices, file=sys.stderr)
         else:
             # we just keep the empy valindices set
             pass
@@ -233,6 +234,7 @@ class Dataset(object):
             self.converted_train_file = convtrainfile
             outconvval = open(convvalfile, "w", encoding="utf-8")
             self.converted_val_file = convvalfile
+        # print("DEBUG origtrain/origval/convtrain/convval=%s/%s/%s/%s" % (outorigtrain, outorigval, outconvtrain, outconvval), file=sys.stderr)
         self.outdir = outdir
         i = 0
         for line in self.instances_as_string():
@@ -250,6 +252,7 @@ class Dataset(object):
                     print(line, file=outorigtrain, end="")
                 if outconvtrain:
                     print(converted, file=outconvtrain)
+            i += 1
         if outorigtrain:
             outorigtrain.close()
         if outorigval:
@@ -277,7 +280,7 @@ class Dataset(object):
             raise Exception("We do not have the splitted original file, run the split method.")
         validationsetfile = self.modified4meta(name_part="orig.val", dir=self.outdir)
         valset = []
-        with open(validationsetfile, "rt") as inp:
+        with open(validationsetfile, "rt", encoding="utf-8") as inp:
             for line in inp:
                 valset.append(json.loads(line))
         return valset
@@ -288,7 +291,7 @@ class Dataset(object):
         method must have been run before with convert set to True."""
         if not self.have_conv_split:
             raise Exception("We do not have the splitted converted file, run the split method.")
-        validationsetfile = self.modified4meta(name_part="orig.val", dir=self.outdir)
+        validationsetfile = self.modified4meta(name_part="converted.val", dir=self.outdir)
         valset = []
         with open(validationsetfile, "rt") as inp:
             for line in inp:
@@ -432,7 +435,7 @@ class Dataset(object):
         ret = (features_list, targets)
         return ret
 
-    def batches_original(self, train=True, file=None, reshape=True, convert=False, batch_size=100, pad_left=False):
+    def batches_original(self, train=True, file=None, reshape=True, batch_size=100, pad_left=False):
         """Return a batch of instances in original format for training.
         """
         class BatchOrigIterable(object):
@@ -468,20 +471,12 @@ class Dataset(object):
             whichfile = file
         else:
             if train:
-                if convert:
                     if not self.have_orig_split:
-                        raise Exception("We do not have a train file in original format for batches_converted")
-                    whichfile = self.orig_train_file
-                else:
-                    if not self.have_conv_split:
                         raise Exception("We do not have a train file in converted format for batches_converted")
-                    whichfile = self.converted_train_file
+                    whichfile = self.orig_train_file
             else:
-                if convert:
-                    whichfile = self.datafile
-                else:
                     if self.converted_data_file:
-                        whichfile = self.converted_data_file
+                        whichfile = self.orig_data_file
                     else:
                         raise Exception("We do not have a data file in converted format for batches_converted")
         return BatchOrigIterable(whichfile, batch_size, self)
