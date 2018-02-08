@@ -461,6 +461,8 @@ class Dataset(object):
                             else:
                                 eof = True
                                 break
+                        if len(collect) == 0:
+                            break
                         if reshape:
                             batch = self.parent.reshape_batch(collect, pad_left=pad_left)
                         else:
@@ -517,6 +519,8 @@ class Dataset(object):
                             else:
                                 eof = True
                                 break
+                        if len(collect) == 0:
+                            break
                         if reshape:
                             batch = self.parent.reshape_batch(collect, as_numpy=as_numpy, pad_left=pad_left)
                         else:
