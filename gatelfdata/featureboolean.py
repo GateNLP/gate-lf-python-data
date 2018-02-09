@@ -12,6 +12,9 @@ class FeatureBoolean(object):
         self.attrinfo = attrinfo
         self.featurestats = featurestats
 
+    def type(self):
+        return "numeric"
+
     @staticmethod
     def bool2float(val):
         if val:

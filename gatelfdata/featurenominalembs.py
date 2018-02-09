@@ -17,6 +17,9 @@ class FeatureNominalEmbs(object):
         self.featurestats = featurestats
         self.vocab = Vocabs.get_vocab(attrinfo)
 
+    def type(self):
+        return "nominal"
+
     def __call__(self, value):
         """Convert a value of the expected type for this feature to a value that can be
         fed into the corresponding input unit of the network"""

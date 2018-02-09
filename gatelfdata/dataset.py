@@ -20,14 +20,11 @@ class Dataset(object):
         """Given the path to a meta file, return the path to a data file"""
         return re.sub("\.meta\.json", ".data.json", metafilename)
 
-    def modified4meta(self, dir=None, name_part=None):
-        """Helper method to construct the full path of one of the files this class creates from
-        the original meta/data files. If dir is given, then it is the containing directory for the file.
-        The name_part parameter specifies the part in the file name that will replace the "meta"
-        in the original metafilename."""
+    @staticmethod
+    def _modified4meta(metafile, name_part=None, dir=None):
         if not name_part:
             raise Exception("Parameter name_part must be specified")
-        path, name = os.path.split(self.metafile)
+        path, name = os.path.split(metafile)
         newname = re.sub("\.meta\.json", "."+name_part+".json", name)
         if dir:
             pathdir = dir
@@ -36,7 +33,12 @@ class Dataset(object):
         newpath = os.path.join(pathdir, newname)
         return newpath
 
-
+    def modified4meta(self, name_part=None, dir=None):
+        """Helper method to construct the full path of one of the files this class creates from
+        the original meta/data files. If dir is given, then it is the containing directory for the file.
+        The name_part parameter specifies the part in the file name that will replace the "meta"
+        in the original metafilename."""
+        return Dataset._modified4meta(self.metafile, name_part=name_part, dir=dir)
 
     @staticmethod
     def load_meta(metafile):
@@ -44,17 +46,22 @@ class Dataset(object):
         with open(metafile, "rt", encoding="utf-8") as inp:
             return json.load(inp)
 
-    def __init__(self, metafile):
+    def __init__(self, metafile, reuse_files=False):
         """Creating an instance will read the metadata and create the converters for
         converting the instances from the original data format (which contains the original
         values and strings) to a converted representation where strings are replaced by
-        word indices related to a vocabulary."""
+        word indices related to a vocabulary.
+        If reuse_files is True, then any files found that look like training or validation files
+        in the same directory are re-used, otherwise the split or convert_to_file methods
+        must be run to re-create them before they can be used.
+        """
+        logger = logging.getLogger(__name__)
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)
         # we do not use the dataFile field because this will be invalid
         # if the files have been moved from their original location
         # self.datafile = self.meta["dataFile"]
-        self.datafile = Dataset.data4meta(metafile)
+        self.orig_data_file = Dataset.data4meta(metafile)
         self.features = Features(self.meta)
         self.target = Target.make(self.meta)
         self.isSequence = self.meta["isSequence"]
@@ -76,14 +83,41 @@ class Dataset(object):
             self.targetType = "numeric"
             self.targetClasses = None
             self.nClasses = 0
-        self.have_conv_split = False
-        self.have_orig_split = False
         self.outdir = None
         self.orig_train_file = None
         self.orig_val_file = None
+        self.have_conv_split = False
+        self.have_orig_split = False
         self.converted_train_file = None
         self.converted_val_file = None
         self.converted_data_file = None
+        if reuse_files:
+            if os.path.exists(Dataset._modified4meta(self.metafile, name_part="orig.train")):
+                if os.path.exists(Dataset._modified4meta(self.metafile, name_part="orig.val")):
+                    self.have_orig_split = True
+                    self.orig_train_file = Dataset._modified4meta(self.metafile, name_part="orig.train")
+                    self.orig_val_file = Dataset._modified4meta(self.metafile, name_part="orig.val")
+                    logger.info("Found and using original train/validation files %s/%s" %
+                                (self.orig_train_file, self.orig_val_file))
+            if os.path.exists(Dataset._modified4meta(self.metafile, name_part="converted.train")):
+                if os.path.exists(Dataset._modified4meta(self.metafile, name_part="converted.val")):
+                    self.have_conv_split = True
+                    self.converted_train_file = Dataset._modified4meta(self.metafile, name_part="converted.train")
+                    self.converted_val_file = Dataset._modified4meta(self.metafile, name_part="converted.val")
+                    logger.info("Found and using converted train/validation files %s/%s" %
+                                (self.converted_train_file, self.converted_val_file))
+            if os.path.exists(Dataset._modified4meta(self.metafile, name_part="converted.data")):
+                self.converted_data_file = Dataset._modified4meta(self.metafile, name_part="converted.data")
+                logger.info("Found and using converted data file %s" % self.converted_data_file)
+        # private fields
+        self._have_feature_idxs = False
+        self._nominal_feature_idxs = None
+        self._numeric_feature_idxs = None
+        self._ngram_feature_idxs = None
+        self._nominal_features = None
+        self._numeric_features = None
+        self._ngram_features = None
+
 
     def instances_as_string(self, train=False, file=None):
         """Returns an iterable that allows to read the original instance data rows as a single string.
@@ -108,7 +142,7 @@ class Dataset(object):
                     raise Exception("We do not have a train file in original format for instances_as_string")
                 whichfile = self.orig_train_file
             else:
-                whichfile = self.datafile
+                whichfile = self.orig_data_file
         return StringIterable(whichfile)
 
     def instances_original(self, train=False, file=None):
@@ -131,7 +165,7 @@ class Dataset(object):
                     raise Exception("We do not have a train file in original format for instances_as_string")
                 whichfile = self.orig_train_file
             else:
-                whichfile = self.datafile
+                whichfile = self.orig_data_file
         return StringIterable(whichfile)
 
     def normalize_features(self, indep, normalize="meanvar"):
@@ -139,6 +173,7 @@ class Dataset(object):
         The features must correspond to the features described in the meta data, i.e. the indep parameter
         has to contain the exact independent part of an instance."""
         assert len(indep) == len(self.meta["features"])
+        # NOTE: this simply delegates the normalizing to each feature instance
         # TODO: We may also want to be able to support squashing functions and similar here.
         if normalize=="meanvar":
             for i in range(len(self.meta["features"])):
@@ -155,6 +190,16 @@ class Dataset(object):
                         indep[i] = val
         return indep
 
+    def convert_feature(self, value, featureindex, normalize=None):
+        """Convert a value or a batch of values for feature with index featureindex and normalize."""
+        # TODO!!!
+        pass
+
+    def convert_feature2(self, value, idxs, normalize=None):
+        """Convert a list or array of features with the given feature indices"""
+        # TODO!!!
+        pass
+
     def convert_indep(self, indep, normalize=None):
         """Convert the independent part of an original representation into the converted representation
         where strings are replaced by word indices or one hot vectors. If normalize is set to "meanvar", then
@@ -166,16 +211,21 @@ class Dataset(object):
             converted = self.normalize_features(converted, normalize=normalize)
         return converted
 
-    def convert_dep(self, dep):
+    def convert_dep(self, dep, is_batch=False):
         """Convert the dependent part of an original representation into the converted representation
         where strings are replaced by one hot vectors."""
         return self.target(dep)
 
-    def convert_instance(self, instance, normalize="meanvar"):
+    def convert_instance(self, instance, normalize="meanvar", is_reshaped_batch=False):
         """Convert an original representation of an instance as read from json to the converted representation.
         This will also by default automatically normalize all numeric features, this can be changed by setting
         the normalize parameter (see convert_indep).
+        If is_reshaped_batch is True, then we expect a batch of reshaped instances instead of
+        a single instance
         Note: if the instance is a string, it is assumed it is still in json format and will get converted first."""
+        if is_reshaped_batch:
+            # todo: use the per-feature conversion methods instead!
+            raise Exception("NOT YET IMPLEMENTED!")
         if isinstance(instance, str):
             instance = json.loads(instance, encoding="utf=8")
         (indep, dep) = instance
@@ -338,7 +388,7 @@ class Dataset(object):
                     whichfile = self.converted_train_file
             else:
                 if convert:
-                    whichfile = self.datafile
+                    whichfile = self.orig_data_file
                 else:
                     if self.converted_data_file:
                         whichfile = self.converted_data_file
@@ -346,9 +396,11 @@ class Dataset(object):
                         raise Exception("We do not have a data file in converted format for instance_as_string")
         return DataIterable(self.meta, whichfile, self, convert=convert)
 
-    def reshape_batch(self, instances, as_numpy=False, pad_left=False):
+    def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False):
         """Reshape the list of converted instances into what is expected for training on a batch.
         NOTE: this only works for cases for now where we do not have nested sequences!!!!!
+        NOTE: as_numpy=True for from_original=True currently only converts the result of converting
+        the outermost list to a numpy array which will automatically also convert the embedded lists.
         """
         logger = logging.getLogger(__name__)
         # instances is just a list of instances, where each instance is the format of "converted instances",
@@ -382,7 +434,7 @@ class Dataset(object):
                 if l > max_target_seq:
                     max_target_seq = l
         logger.debug("reshape_batch: max_seq_lengths=%r" % max_seq_lengths)
-        if as_numpy:
+        if as_numpy and not from_original:
             # convert each feature and also the targets to numpy arrays of the correct shape
             # We start with a list of nFeatures features, each represented as a list
             # if that list contains itself lists, i.e. max_seq_lengths for it is > 0,
@@ -410,8 +462,6 @@ class Dataset(object):
                     # we just have batchsize values
                     arr = np.array(features_list[i])
                     features_list[i] = arr
-                # convert the features list itself to numpy
-                features_list = np.array(features_list, dtype=object)
             # also convert the targets to numpy, if requested
             # for each instance in the batch, a target is one of the following:
             # - a one-hot list, indicating a nominal class
@@ -434,10 +484,15 @@ class Dataset(object):
                 # classification, nominal classes: we need an array of shape batchsize, nclasses
                 arr = np.array(targets, np.float_)
             targets = arr
+        if as_numpy:
+            # convert the features list itself to numpy
+            features_list = np.array(features_list, dtype=object)
+        if as_numpy and from_original:
+            targets = np.array(targets, dtype=object)
         ret = (features_list, targets)
         return ret
 
-    def batches_original(self, train=True, file=None, reshape=True, batch_size=100, pad_left=False):
+    def batches_original(self, train=True, file=None, reshape=True, batch_size=100, pad_left=False, as_numpy=False):
         """Return a batch of instances in original format for training.
         """
         class BatchOrigIterable(object):
@@ -465,7 +520,7 @@ class Dataset(object):
                         if len(collect) == 0:
                             break
                         if reshape:
-                            batch = self.parent.reshape_batch(collect, pad_left=pad_left)
+                            batch = self.parent.reshape_batch(collect, pad_left=pad_left, as_numpy=as_numpy, from_original=True)
                         else:
                             batch = collect
                         yield batch
@@ -479,10 +534,10 @@ class Dataset(object):
                         raise Exception("We do not have a train file in converted format for batches_converted")
                     whichfile = self.orig_train_file
             else:
-                    if self.converted_data_file:
+                    if self.orig_data_file:
                         whichfile = self.orig_data_file
                     else:
-                        raise Exception("We do not have a data file in converted format for batches_converted")
+                        raise Exception("We do not have a data file in original format for batches_converted")
         return BatchOrigIterable(whichfile, batch_size, self)
 
     def batches_converted(self, train=True, file=None, reshape=True, convert=False, batch_size=100, as_numpy=False, pad_left=False):
@@ -543,13 +598,79 @@ class Dataset(object):
                     whichfile = self.converted_train_file
             else:
                 if convert:
-                    whichfile = self.datafile
+                    whichfile = self.orig_data_file
                 else:
                     if self.converted_data_file:
                         whichfile = self.converted_data_file
                     else:
                         raise Exception("We do not have a data file in converted format for batches_converted")
         return BatchConvertedIterable(whichfile, batch_size, self)
+
+    def _calculate_feature_idxs(self):
+        """Helper method to calculate and cache all the per-type feature index lists.
+        NOTE: the type we get for each feature is either numeric (for actual numeric and boolean)
+        or nominal (for embeddings or one-hot encoded nominal values) or ngram (for sequences of nominal)."""
+        if self._have_feature_idxs:
+            return
+        self._numeric_feature_idxs = []
+        self._nominal_feature_idxs = []
+        self._ngram_feature_idxs = []
+        self._numeric_features = []
+        self._nominal_features = []
+        self._ngram_features = []
+        idx = 0
+        for f in self.features:
+            t = f.type()
+            if t == "numeric":
+                self._numeric_feature_idxs.append(idx)
+                self._numeric_features.append(f)
+            elif t == "nominal":
+                self._nominal_feature_idxs.append(idx)
+                self._nominal_features.append(f)
+            elif t == "ngram":
+                self._ngram_feature_idxs.append(idx)
+                self._ngram_features.append(f)
+            else:
+                raise Exception("Feature type unknown, looks like a bug: %s" % t)
+            idx += 1
+
+    def get_numeric_feature_idxs(self):
+        """Return a list of indices of all numeric or boolean features"""
+        if not self._have_feature_idxs:
+            self._calculate_feature_idxs()
+        return self._numeric_feature_idxs
+
+    def get_nominal_feature_idxs(self):
+        """Return a list of indices of all nominal features represented by some index and
+        ultimately by a vector"""
+        if not self._have_feature_idxs:
+            self._calculate_feature_idxs()
+        return self._nominal_feature_idxs
+
+    def get_ngram_feature_idxs(self):
+        """Return a list of indices for all features which are ngrams, i.e. lists of embs."""
+        if not self._have_feature_idxs:
+            self._calculate_feature_idxs()
+        return self._ngram_feature_idxs
+
+    def get_numeric_features(self):
+        """Return a list of numeric or boolean features"""
+        if not self._have_feature_idxs:
+            self._calculate_feature_idxs()
+        return self._numeric_features
+
+    def get_nominal_features(self):
+        """Return a list of all nominal features represented by some index and
+        ultimately by a vector"""
+        if not self._have_feature_idxs:
+            self._calculate_feature_idxs()
+        return self._nominal_features
+
+    def get_ngram_features(self):
+        """Return a list of features which are ngrams, i.e. lists of embs."""
+        if not self._have_feature_idxs:
+            self._calculate_feature_idxs()
+        return self._ngram_features
 
     def get_info(self):
         """Return a concise description of the learning problem that makes it easier to understand

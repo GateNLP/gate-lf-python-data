@@ -55,6 +55,13 @@ class TestVocab1(unittest.TestCase):
 
 class Tests4Features1test1(unittest.TestCase):
 
+    def test_t1(self):
+        logger.info("Running Tests4Features1test1/test_t1")
+        ds = Dataset(TESTFILE1)
+        metafile = ds.metafile
+        # print("debug: metafile=", metafile, file=sys.stderr)
+        assert Dataset._modified4meta(metafile, name_part="train.val").endswith("train.val.json")
+
     def test_t2(self):
         logger.info("Running Tests4Features1test1/test_t2")
         ds = Dataset(TESTFILE1)
@@ -269,12 +276,17 @@ class Tests4Features1test1(unittest.TestCase):
                                                     0.0, 0.0, 0.0, 0.0]]
         bconvb2 = ds.batches_converted(train=True, batch_size=4, reshape=True)
         batch_conv2 = next(iter(bconvb2))
-        print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)
+        # print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)
         assert len(batch_conv2) == 2
         featurelist1 = batch_conv2[0]
         feature1 = featurelist1[0]
         assert feature1[1] == 1210
         Vocabs.init()
+
+    def test_t8(self):
+        logger.info("Running Tests4Features1test1/test_t8")
+        ds = Dataset(TESTFILE3, reuse_files=True)
+        # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
 
 
 if __name__ == '__main__':

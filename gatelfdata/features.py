@@ -49,16 +49,25 @@ class Features(object):
             logger.debug("Features: appending feature=%r", thefeature)
             self.features.append(thefeature)
 
-    def _convert_featurevec(self, valuelist):
-        if len(valuelist) != len(self.features):
+    def _convert_featurevec(self, valuelist, idxs=None):
+        if not idxs and (len(valuelist) != len(self.features)):
             raise Exception("Wrong number of values passed, expected", len(self.features), "got", len(valuelist))
+        if idxs and len(idxs) > len(valuelist):
+            raise Exception("Wrong number of idxs passed, got", len(idxs), "but got values:", len(valuelist))
+        if idxs and len(idxs) > len(self.features):
+            raise Exception("Wrong number of idxs passed, got", len(idxs), "but got features:", len(self.features))
+        if idxs:
+            valueslist = [valuelist[i] for i in idxs]
+            features = [self.features[i] for i in idxs]
+        else:
+            features = self.features
         values = []
-        for i in range(len(self.features)):
-            res = self.features[i](valuelist[i])
+        for i in range(len(features)):
+            res = features[i](valuelist[i])
             values.append(res)
         return values
 
-    def __call__(self, valuelist):
+    def __call__(self, valuelist, idxs=None):
         # For a feature vector:
         # this will go through each input and run it through the stored feature
         # instance, and the values will get put into the result list and returned
@@ -74,13 +83,13 @@ class Features(object):
             # then convert the resulting list of lists
             seqofvecs = []
             for el in valuelist:
-                vals4featurevec = self._convert_featurevec(el)
+                vals4featurevec = self._convert_featurevec(el, idxs=idxs)
                 seqofvecs.append(vals4featurevec)
             # now each element in sequofvecs should have as many elements
             # as there are features, just transpose that matrix
             return [l for l in map(list, zip(*seqofvecs))]
         else:
-            values = self._convert_featurevec(valuelist)
+            values = self._convert_featurevec(valuelist, idxs=idxs)
             return values
 
     def size(self):
