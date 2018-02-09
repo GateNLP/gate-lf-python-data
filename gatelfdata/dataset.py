@@ -410,29 +410,30 @@ class Dataset(object):
                     # we just have batchsize values
                     arr = np.array(features_list[i])
                     features_list[i] = arr
+                # convert the features list itself to numpy
+                features_list = np.array(features_list, dtype=object)
             # also convert the targets to numpy, if requested
             # for each instance in the batch, a target is one of the following:
             # - a one-hot list, indicating a nominal class
             # - a list of one-hot lists, in case of sequence tagging
             # - (not yet:) a numeric target, a single float value
-            if as_numpy:
-                if n_classes == 0:
-                    arr = np.array(targets, np.float_)
-                elif is_sequence:
-                    # sequence tagging, nominal classes: we need to create an array of
-                    # shape batchsize, maxseq, nclasses and fill in the values either left or right padded
-                    arr = np.zeros((batch_size, max_target_seq, n_classes), np.float_)
-                    # fill in the values for each instance
-                    for j in range(batch_size):
-                        v = targets[j]
-                        if pad_left:
-                            arr[j, -len(v):] = v
-                        else:
-                            arr[j, :len(v)] = v
-                else:
-                    # classification, nominal classes: we need an array of shape batchsize, nclasses
-                    arr = np.array(targets, np.float_)
-                targets = arr
+            if n_classes == 0:
+                arr = np.array(targets, np.float_)
+            elif is_sequence:
+                # sequence tagging, nominal classes: we need to create an array of
+                # shape batchsize, maxseq, nclasses and fill in the values either left or right padded
+                arr = np.zeros((batch_size, max_target_seq, n_classes), np.float_)
+                # fill in the values for each instance
+                for j in range(batch_size):
+                    v = targets[j]
+                    if pad_left:
+                        arr[j, -len(v):] = v
+                    else:
+                        arr[j, :len(v)] = v
+            else:
+                # classification, nominal classes: we need an array of shape batchsize, nclasses
+                arr = np.array(targets, np.float_)
+            targets = arr
         ret = (features_list, targets)
         return ret
 
