@@ -67,6 +67,9 @@ class Features(object):
             values.append(res)
         return values
 
+    def __iter__(self):
+        return iter(self.features)
+
     def __call__(self, valuelist, idxs=None):
         # For a feature vector:
         # this will go through each input and run it through the stored feature
