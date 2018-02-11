@@ -79,8 +79,10 @@ class Tests4Features1test1(unittest.TestCase):
         # the dep part is the encoding for two nominal classes, we use
         # a one-hot encoding always for now, so this should be a vector
         # of length 2
-        # print("DEBUG: test_t2 dep=", dep, file=sys.stderr)
-        assert len(dep) == 2
+        assert dep == 0
+        # if we would have converted the target as_onehot then we
+        # would have gotten a vector instead:
+        # assert len(dep) == 2
         Vocabs.init()
 
     def test_t3(self):
@@ -116,7 +118,8 @@ class Tests4Features1test1(unittest.TestCase):
         assert len(ngram1_it) == 6
         assert ngram1_it[0] == 3542
         assert ngram1_it[1] == 8
-        assert len(dep1_it) == 2
+        assert dep1_it == 1
+        # assert len(dep1_it) == 2
         Vocabs.init()
 
     def test_t4(self):
@@ -160,11 +163,11 @@ class Tests4Features1test1(unittest.TestCase):
         dep1 = dep[0]
         dep2 = dep[1]
         dep3 = dep[2]
-        t11 =  ds.target.vocab.onehot2string(dep1)
+        t11 =  ds.target.vocab.idx2string(dep1)
         assert t11 == "ADJ"
-        t12 = ds.target.vocab.onehot2string(dep2)
+        t12 = ds.target.vocab.idx2string(dep2)
         assert t12 == "ADJ"
-        t13 = ds.target.vocab.onehot2string(dep3)
+        t13 = ds.target.vocab.idx2string(dep3)
         assert t13 == "ADJ"
         Vocabs.init()
 
@@ -182,8 +185,9 @@ class Tests4Features1test1(unittest.TestCase):
         # print("DEBUG: valset_conv=%s" % valset_conv, file=sys.stderr)
         assert len(valset_conv) == 3
         vconvi2 = valset_conv[1]
-
-        assert vconvi2 == [[[4, 83, 1529, 3, 74, 5, 189, 174, 1]], [0.0, 1.0]]
+        # print("DEBUG: vconvi2=", vconvi2, file=sys.stderr)
+        # assert vconvi2 == [[[4, 83, 1529, 3, 74, 5, 189, 174, 1]], [0.0, 1.0]]
+        assert vconvi2 == [[[4, 83, 1529, 3, 74, 5, 189, 174, 1]], 1]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep
@@ -212,7 +216,9 @@ class Tests4Features1test1(unittest.TestCase):
         batch_conv1 = next(iter(bconvb1))
         # print("DEBUG: batch_conv1=%s" % (batch_conv1,), file=sys.stderr)
         assert len(batch_conv1) == 4
-        assert batch_conv1[1] ==[[[6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1]], [1.0, 0.0]]
+        # print("DEBUG: batch_conv1[1]=%s" % (batch_conv1[1],), file=sys.stderr)
+        # assert batch_conv1[1] ==[[[6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1]], [1.0, 0.0]]
+        assert batch_conv1[1] == [[[6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1]], 0]
         bconvb2 = ds.batches_converted(train=True, batch_size=4, reshape=True)
         batch_conv2 = next(iter(bconvb2))
         # print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)
@@ -237,10 +243,12 @@ class Tests4Features1test1(unittest.TestCase):
         # print("DEBUG: valset_conv=%s" % valset_conv, file=sys.stderr)
         assert len(valset_conv) == 3
         vconvi2 = valset_conv[1]
+        # print("DEBUG: vconvi2=", vconvi2, file=sys.stderr)
+        # assert vconvi2 == [[13, 157, 25, 104, 12, 319, 2, 6, 1, 1, 1, 1, 1, 1, 1, 151, 28, 14, 1, 14, 1, 215,
+        #                      1, 101, 1, 1], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        #                                      0.0, 0.0]]
         assert vconvi2 == [[13, 157, 25, 104, 12, 319, 2, 6, 1, 1, 1, 1, 1, 1, 1, 151, 28, 14, 1, 14, 1, 215,
-                             1, 101, 1, 1], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                             0.0, 0.0]]
-        # assert vconvi2 == [[[4, 83, 1529, 3, 74, 5, 189, 174, 1]], [0.0, 1.0]]
+                              1, 101, 1, 1], 0]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep
@@ -269,11 +277,13 @@ class Tests4Features1test1(unittest.TestCase):
         assert feature1[1] == 'Bill'
         bconvb1 = ds.batches_converted(train=True, batch_size=4, reshape=False)
         batch_conv1 = next(iter(bconvb1))
-        # print("DEBUG: batch_conv1=%s" % (batch_conv1,), file=sys.stderr)
+        # print("DEBUG: !!!batch_conv1[1]=%s" % (batch_conv1[1],), file=sys.stderr)
         assert len(batch_conv1) == 4
         assert batch_conv1[1] == [[1210, 1495, 9, 796, 23, 3075, 7, 3, 2, 2, 1, 2, 1, 1, 20, 54, 1, 86, 1, 2, 1, 391,
-                                   1, 300, 1, 77], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                                    0.0, 0.0, 0.0, 0.0]]
+                                   1, 300, 1, 77], 0]
+        #assert batch_conv1[1] == [[1210, 1495, 9, 796, 23, 3075, 7, 3, 2, 2, 1, 2, 1, 1, 20, 54, 1, 86, 1, 2, 1, 391,
+        #                           1, 300, 1, 77], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        #                                            0.0, 0.0, 0.0, 0.0]]
         bconvb2 = ds.batches_converted(train=True, batch_size=4, reshape=True)
         batch_conv2 = next(iter(bconvb2))
         # print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)

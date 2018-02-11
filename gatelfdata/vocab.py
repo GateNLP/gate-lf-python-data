@@ -142,8 +142,8 @@ class Vocab(object):
         idx = vec.index(1.0)  ## TODO: this raises an exceptio if there is no 1.0
         return self.itos[idx]
 
-    def count(self, str):
-        c = self.freqs.get(str)
+    def count(self, strng):
+        c = self.freqs.get(strng)
         if c:
             return c
         else:

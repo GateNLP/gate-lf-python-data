@@ -18,14 +18,14 @@ class Dataset(object):
     @staticmethod
     def data4meta(metafilename):
         """Given the path to a meta file, return the path to a data file"""
-        return re.sub("\.meta\.json", ".data.json", metafilename)
+        return re.sub(r'\.meta\.json', ".data.json", metafilename)
 
     @staticmethod
     def _modified4meta(metafile, name_part=None, dir=None):
         if not name_part:
             raise Exception("Parameter name_part must be specified")
         path, name = os.path.split(metafile)
-        newname = re.sub("\.meta\.json", "."+name_part+".json", name)
+        newname = re.sub(r'\.meta\.json', '.'+name_part+'.json', name)
         if dir:
             pathdir = dir
         else:
@@ -191,12 +191,12 @@ class Dataset(object):
         return indep
 
     def convert_feature(self, value, featureindex, normalize=None):
-        """Convert a value or a batch of values for feature with index featureindex and normalize."""
+        """TODO Convert a value or a batch of values for feature with index featureindex and normalize."""
         # TODO!!!
         pass
 
     def convert_feature2(self, value, idxs, normalize=None):
-        """Convert a list or array of features with the given feature indices"""
+        """TODO Convert a list or array of features with the given feature indices"""
         # TODO!!!
         pass
 
@@ -211,10 +211,13 @@ class Dataset(object):
             converted = self.normalize_features(converted, normalize=normalize)
         return converted
 
-    def convert_dep(self, dep, is_batch=False):
+    def convert_dep(self, dep, is_batch=False, as_onehot=False):
         """Convert the dependent part of an original representation into the converted representation
-        where strings are replaced by one hot vectors."""
-        return self.target(dep)
+        where strings are replaced by one hot vectors.
+        If as_onehot is True, then nominal targets is onverted to onehot float vectors instead of
+        integer indices (ignored for other target types).
+        TODO: if is_batch=True, a whole batch of targets is converted"""
+        return self.target(dep, as_onehot=as_onehot)
 
     def convert_instance(self, instance, normalize="meanvar", is_reshaped_batch=False):
         """Convert an original representation of an instance as read from json to the converted representation.
@@ -229,7 +232,7 @@ class Dataset(object):
         if isinstance(instance, str):
             instance = json.loads(instance, encoding="utf=8")
         (indep, dep) = instance
-        indep_converted = self.convert_indep(indep,normalize=normalize)
+        indep_converted = self.convert_indep(indep, normalize=normalize)
         dep_converted = self.convert_dep(dep)
         return [indep_converted, dep_converted]
 
