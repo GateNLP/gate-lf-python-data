@@ -10,8 +10,8 @@ class TargetNominal(object):
         if self.isSequence:
             self.seq_max = meta["sequLengths.max"]
             self.seq_avg = meta["sequLengths.mean"]
-        targetStats = meta["targetStats"]
-        self.stringCounts = targetStats["stringCounts"]
+        targetstats = meta["targetStats"]
+        self.stringCounts = targetstats["stringCounts"]
         self.nrTargets = len(self.stringCounts)
         self.freqs = Counter(self.stringCounts)
         self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_pad=True)
