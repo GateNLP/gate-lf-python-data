@@ -7,7 +7,7 @@ import os
 import logging
 from .features import Features
 from .target import Target
-
+import sys
 
 class Dataset(object):
     """Class representing training data present in the meta and data files.
@@ -399,12 +399,31 @@ class Dataset(object):
                         raise Exception("We do not have a data file in converted format for instance_as_string")
         return DataIterable(self.meta, whichfile, self, convert=convert)
 
-    def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False):
+    @staticmethod
+    def pad_list_(thelist, tosize, pad_left=False, pad_value=None):
+        """Pads the list to have size elements, inserting the pad_value as needed,
+        left or right depending on pad_left. CAUTION! Modifies thelist and also returns it"""
+        n_needed = tosize - len(thelist)
+        if n_needed <= 0:
+            return thelist
+        if pad_left:
+            for i in range(n_needed):
+                thelist.insert(0, pad_value)
+        else:
+            for i in range(n_needed):
+                thelist.append(pad_value)
+        return thelist
+
+    def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False, pad=True):
         """Reshape the list of converted instances into what is expected for training on a batch.
-        NOTE: this only works for cases for now where we do not have nested sequences!!!!!
+        TODO: currently this only works properly for non-sequence instances: sequence instances need to get padded!
+        NOTE: for non-sequence instances, we pad all list-typed features to the maximum length. If from_original
+        is true, the padding is done with empty strings, otherwise with integer zeros.
         NOTE: as_numpy=True for from_original=True currently only converts the result of converting
         the outermost list to a numpy array which will automatically also convert the embedded lists.
         """
+        # TODO: now that we already pad the non-numpy lists, converting to numpy does not need to
+        # care about equal size lists anymore!!!
         logger = logging.getLogger(__name__)
         # instances is just a list of instances, where each instance is the format of "converted instances",
         # which consists of two sub lists for the independent and dependent part.
@@ -427,15 +446,30 @@ class Dataset(object):
             for i in range(self.nFeatures):
                 fv = indep[i]
                 if isinstance(fv, list):
-                    l = len(fv)
-                    if l > max_seq_lengths[i]:
-                        max_seq_lengths[i] = l
+                    lf = len(fv)
+                    if lf > max_seq_lengths[i]:
+                        max_seq_lengths[i] = lf
                 features_list[i].append(fv)
             targets.append(dep)
             if is_sequence:
-                l = len(dep)
-                if l > max_target_seq:
-                    max_target_seq = l
+                ld = len(dep)
+                if ld > max_target_seq:
+                    max_target_seq = ld
+        # now if there is anything to pad, pad it
+        if from_original:
+            pad_value = ''
+        else:
+            pad_value = 0
+        # we need to pad either because it is requested or because we have to convert to numpy later
+        # in which case we like to have same size sequences
+        # TODO: making use of this for the numpy conversion is not yet implemented!
+        if pad or as_numpy:
+            for i, max_seq_length in enumerate(max_seq_lengths):
+                if max_seq_length > 0:
+                    # ok, we need to pad
+                    feature = features_list[i]
+                    for j in range(len(feature)):
+                        feature[j] = Dataset.pad_list_(feature[j], max_seq_length, pad_left=pad_left, pad_value=pad_value)
         logger.debug("reshape_batch: max_seq_lengths=%r" % max_seq_lengths)
         if as_numpy and not from_original:
             # convert each feature and also the targets to numpy arrays of the correct shape

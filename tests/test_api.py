@@ -203,7 +203,8 @@ class Tests4Features1test1(unittest.TestCase):
         # print("DEBUG: batch_orig1=%s" % (batch_orig1,), file=sys.stderr)
         # if reshape was False, this is just a list of instances in original format
         assert len(batch_orig1) == 4
-        assert batch_orig1[1] == [[['rife', 'with', 'nutty', 'cliches', 'and', 'far', 'too', 'much', 'dialogue', '.']], 'neg']
+        assert batch_orig1[1] == [[['rife', 'with', 'nutty', 'cliches', 'and', 'far', 'too', 'much', 'dialogue', '.']],
+                                  'neg']
         bitb2 = ds.batches_original(train=True, batch_size=4, reshape=True)
         batch_orig2 = next(iter(bitb2))
         # print("DEBUG: batch_orig2=%s" % (batch_orig2,), file=sys.stderr)
@@ -211,7 +212,10 @@ class Tests4Features1test1(unittest.TestCase):
         assert len(batch_orig2) == 2
         featurelist1 = batch_orig2[0]
         feature1 = featurelist1[0]
-        assert feature1[1] == ['rife', 'with', 'nutty', 'cliches', 'and', 'far', 'too', 'much', 'dialogue', '.']
+        # print("DEBUG: feature1[1]=%s" % (feature1[1],), file=sys.stderr)
+        assert feature1[1] == ['rife', 'with', 'nutty', 'cliches', 'and', 'far', 'too', 'much', 'dialogue', '.', '',
+                               '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+                               '', '', '']
         bconvb1 = ds.batches_converted(train=True, batch_size=4, reshape=False)
         batch_conv1 = next(iter(bconvb1))
         # print("DEBUG: batch_conv1=%s" % (batch_conv1,), file=sys.stderr)
@@ -225,7 +229,9 @@ class Tests4Features1test1(unittest.TestCase):
         assert len(batch_conv2) == 2
         featurelist1 = batch_conv2[0]
         feature1 = featurelist1[0]
-        assert feature1[1] ==[6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1]
+        # print("DEBUG: feature1[1]=%s" % (feature1[1],), file=sys.stderr)
+        assert feature1[1] == [6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         Vocabs.init()
 
     def test_t7(self):
@@ -248,7 +254,7 @@ class Tests4Features1test1(unittest.TestCase):
         #                      1, 101, 1, 1], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         #                                      0.0, 0.0]]
         assert vconvi2 == [[13, 157, 25, 104, 12, 319, 2, 6, 1, 1, 1, 1, 1, 1, 1, 151, 28, 14, 1, 14, 1, 215,
-                              1, 101, 1, 1], 0]
+                            1, 101, 1, 1], 0]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep
