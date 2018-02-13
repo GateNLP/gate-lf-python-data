@@ -14,7 +14,7 @@ class TargetNominal(object):
         self.stringCounts = targetstats["stringCounts"]
         self.nrTargets = len(self.stringCounts)
         self.freqs = Counter(self.stringCounts)
-        self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_pad=True)
+        self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_special_indices=True, emb_train="onehot")
         self.vocab.finish()
         # influences if the conversion will return the index or
         # the onehot vector

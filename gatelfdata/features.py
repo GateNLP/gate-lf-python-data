@@ -36,7 +36,7 @@ class Features(object):
             attrcode = attrinfo.get("code")
             if dt == "nominal":
                 Vocabs.setup_vocab(attrinfo, stats[f["name"]])
-            Vocabs.finish()
+        Vocabs.finish()
         for f in self.meta["features"]:
             dt = f["datatype"]
             attrnr = f["attrid"]

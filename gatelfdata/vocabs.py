@@ -1,7 +1,7 @@
 from __future__ import print_function
 from . vocab import Vocab
 import logging
-
+import sys
 
 class Vocabs(object):
     """A class for managing all the vocab instances that are needed by features"""
@@ -21,7 +21,8 @@ class Vocabs(object):
                 vocab = cls.vocabs.get(emb_id)
                 vocab.add_counts(counts)
             else:
-                vocab = Vocab(featurestats["stringCounts"],emb_id=emb_id)
+                emb_train = attrinfo.get("emb_train")
+                vocab = Vocab(featurestats["stringCounts"], emb_id=emb_id, emb_train=emb_train)
                 cls.vocabs[emb_id] = vocab
 
     @classmethod

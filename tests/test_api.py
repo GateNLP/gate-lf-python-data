@@ -31,24 +31,25 @@ class TestVocab1(unittest.TestCase):
     def test_vocab1(self):
         from gatelfdata.vocab import Vocab
         d1 = {"a": 12, "b": 13, "c": 1, "d": 2, "x": 12}
-        v1 = Vocab(d1, add_symbols=["<<START>>"], max_size=5, min_freq=2)
+        v1 = Vocab(d1, add_symbols=["<<START>>"], max_size=6, min_freq=2, emb_train="yes")
         v1.finish()
         logger.info("\nTestVocab/test_vocab1: v1.itos=%r" % v1.itos)
         logger.info("\nTestVocab/test_vocab1: v1.stoi=%r" % v1.stoi)
-        assert len(v1.itos) == 5
-        assert len(v1.stoi) == 5
+        assert len(v1.itos) == 6
+        assert len(v1.stoi) == 6
         assert "a" in v1.stoi
-        assert v1.idx2string(2) == "b"
-        assert v1.string2idx("a") == 3
-        assert v1.string2idx("b") == 2
-        assert v1.string2idx("<<START>>") == 1
+        assert v1.idx2string(3) == "b"
+        assert v1.string2idx("a") == 4
+        assert v1.string2idx("b") == 3
+        assert v1.string2idx("<<START>>") == 2
         vec = v1.string2onehot("a")
-        assert len(vec) == 5
+        assert len(vec) == 6
         assert vec[0] == 0.0
         assert vec[1] == 0.0
         assert vec[2] == 0.0
-        assert vec[3] == 1.0
-        assert vec[4] == 0.0
+        assert vec[3] == 0.0
+        assert vec[4] == 1.0
+        assert vec[5] == 0.0
         c = v1.count("d")
         assert c == 2
 
@@ -83,7 +84,6 @@ class Tests4Features1test1(unittest.TestCase):
         # if we would have converted the target as_onehot then we
         # would have gotten a vector instead:
         # assert len(dep) == 2
-        Vocabs.init()
 
     def test_t3(self):
         logger.info("Running Tests4Features1test1/test_t3")
@@ -106,8 +106,8 @@ class Tests4Features1test1(unittest.TestCase):
         logger.info("Converted indep1=%r", indep1_conv)
         ngram1 = indep1_conv[0]
         assert len(ngram1) == 6
-        assert ngram1[0] == 3542
-        assert ngram1[1] == 8
+        assert ngram1[0] == 3543
+        assert ngram1[1] == 9
         it1 = iter(ds.instances_converted(train=False, convert=True))
         rec = next(it1)
         logger.info("TESTFILE2 rec1=%r", rec)
@@ -116,16 +116,17 @@ class Tests4Features1test1(unittest.TestCase):
         ngram1_it = indep1_it[0]
         logger.info("TESTFILE2 ngram1_it=%r", ngram1_it)
         assert len(ngram1_it) == 6
-        assert ngram1_it[0] == 3542
-        assert ngram1_it[1] == 8
+        assert ngram1_it[0] == 3543
+        assert ngram1_it[1] == 9
         assert dep1_it == 1
         # assert len(dep1_it) == 2
-        Vocabs.init()
 
     def test_t4(self):
         logger.info("Running Tests4Features1test1/test_t4")
         ds = Dataset(TESTFILE3)
         logger.info("TESTFILE3 attrs=%r", ds.meta.get("featureInfo").get("attributes"))
+        # Features constructor finishes the vocab, so we need to re-initilize
+        Vocabs.init()
         features = Features(ds.meta)
         logger.info("TESTFILE3 features=%r", features)
         it1 = iter(ds.instances_original())
@@ -141,7 +142,6 @@ class Tests4Features1test1(unittest.TestCase):
         # a one-hot encoding always for now, so this should be a vector
         # of length 2
         # assert len(dep) == 2
-        Vocabs.init()
 
     def test_t5(self):
         logger.info("Running Tests4Features1test1/test_t5")
@@ -169,7 +169,6 @@ class Tests4Features1test1(unittest.TestCase):
         assert t12 == "ADJ"
         t13 = ds.target.vocab.idx2string(dep3)
         assert t13 == "ADJ"
-        Vocabs.init()
 
     def test_t6(self):
         logger.info("Running Tests4Features1test1/test_t6")
@@ -187,7 +186,7 @@ class Tests4Features1test1(unittest.TestCase):
         vconvi2 = valset_conv[1]
         # print("DEBUG: vconvi2=", vconvi2, file=sys.stderr)
         # assert vconvi2 == [[[4, 83, 1529, 3, 74, 5, 189, 174, 1]], [0.0, 1.0]]
-        assert vconvi2 == [[[4, 83, 1529, 3, 74, 5, 189, 174, 1]], 1]
+        assert vconvi2 == [[[5, 84, 1530, 4, 75, 6, 190, 175, 2]], 1]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep
@@ -222,7 +221,7 @@ class Tests4Features1test1(unittest.TestCase):
         assert len(batch_conv1) == 4
         # print("DEBUG: batch_conv1[1]=%s" % (batch_conv1[1],), file=sys.stderr)
         # assert batch_conv1[1] ==[[[6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1]], [1.0, 0.0]]
-        assert batch_conv1[1] == [[[6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1]], 0]
+        assert batch_conv1[1] == [[[6694, 17, 6469, 544, 6, 168, 51, 59, 237, 2]], 0]
         bconvb2 = ds.batches_converted(train=True, batch_size=4, reshape=True)
         batch_conv2 = next(iter(bconvb2))
         # print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)
@@ -230,9 +229,8 @@ class Tests4Features1test1(unittest.TestCase):
         featurelist1 = batch_conv2[0]
         feature1 = featurelist1[0]
         # print("DEBUG: feature1[1]=%s" % (feature1[1],), file=sys.stderr)
-        assert feature1[1] == [6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        assert feature1[1] == [6694, 17, 6469, 544, 6, 168, 51, 59, 237, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        Vocabs.init()
 
     def test_t7(self):
         logger.info("Running Tests4Features1test1/test_t7")
@@ -253,8 +251,8 @@ class Tests4Features1test1(unittest.TestCase):
         # assert vconvi2 == [[13, 157, 25, 104, 12, 319, 2, 6, 1, 1, 1, 1, 1, 1, 1, 151, 28, 14, 1, 14, 1, 215,
         #                      1, 101, 1, 1], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         #                                      0.0, 0.0]]
-        assert vconvi2 == [[13, 157, 25, 104, 12, 319, 2, 6, 1, 1, 1, 1, 1, 1, 1, 151, 28, 14, 1, 14, 1, 215,
-                            1, 101, 1, 1], 0]
+        assert vconvi2 == [[14, 158, 26, 105, 13, 320, 3, 7, 2, 2, 2, 2, 2, 2, 0, 152, 29, 15, 0, 15, 0, 216,
+                            0, 102, 0, 0], 0]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep
@@ -285,8 +283,8 @@ class Tests4Features1test1(unittest.TestCase):
         batch_conv1 = next(iter(bconvb1))
         # print("DEBUG: !!!batch_conv1[1]=%s" % (batch_conv1[1],), file=sys.stderr)
         assert len(batch_conv1) == 4
-        assert batch_conv1[1] == [[1210, 1495, 9, 796, 23, 3075, 7, 3, 2, 2, 1, 2, 1, 1, 20, 54, 1, 86, 1, 2, 1, 391,
-                                   1, 300, 1, 77], 0]
+        assert batch_conv1[1] == [[1211, 1496, 10, 797, 24, 3076, 8, 4, 3, 3, 2, 3, 2, 2, 21, 55, 0, 87, 0, 3, 0, 392,
+                                   0, 301, 0, 78], 0]
         #assert batch_conv1[1] == [[1210, 1495, 9, 796, 23, 3075, 7, 3, 2, 2, 1, 2, 1, 1, 20, 54, 1, 86, 1, 2, 1, 391,
         #                           1, 300, 1, 77], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         #                                            0.0, 0.0, 0.0, 0.0]]
@@ -296,8 +294,7 @@ class Tests4Features1test1(unittest.TestCase):
         assert len(batch_conv2) == 2
         featurelist1 = batch_conv2[0]
         feature1 = featurelist1[0]
-        assert feature1[1] == 1210
-        Vocabs.init()
+        assert feature1[1] == 1211
 
     def test_t8(self):
         logger.info("Running Tests4Features1test1/test_t8")

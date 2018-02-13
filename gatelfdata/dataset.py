@@ -7,6 +7,7 @@ import os
 import logging
 from .features import Features
 from .target import Target
+from .vocabs import Vocabs
 import sys
 
 class Dataset(object):
@@ -56,6 +57,7 @@ class Dataset(object):
         must be run to re-create them before they can be used.
         """
         logger = logging.getLogger(__name__)
+        Vocabs.init()
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)
         # we do not use the dataFile field because this will be invalid
