@@ -1,5 +1,6 @@
 from gatelfdata.dataset import Dataset
-from gatelfdata.features import Vocabs
+from gatelfdata.vocabs import Vocabs
+from gatelfdata.vocab import Vocab
 from gatelfdata.features import Features
 import unittest
 import os
@@ -7,7 +8,7 @@ import sys
 import logging
 
 logger = logging.getLogger("gatelfdata")
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.WARN)
 streamhandler = logging.StreamHandler()
 formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
@@ -24,12 +25,13 @@ TESTFILE1 = os.path.join(DATADIR, "class-ionosphere.meta.json")
 TESTFILE2 = os.path.join(DATADIR, "class-ngram-sp1.meta.json")
 TESTFILE3 = os.path.join(DATADIR, "class-window-pos1.meta.json")
 TESTFILE4 = os.path.join(DATADIR, "seq-pos1.meta.json")
+EMBFILE20_50TXT = os.path.join(DATADIR, "emb-mini20-25.txt")
+EMBFILE20_50GZ = os.path.join(DATADIR, "emb-mini20-25.txt.gz")
 
 
 class TestVocab1(unittest.TestCase):
 
     def test_vocab1(self):
-        from gatelfdata.vocab import Vocab
         d1 = {"a": 12, "b": 13, "c": 1, "d": 2, "x": 12}
         v1 = Vocab(d1, add_symbols=["<<START>>"], max_size=6, min_freq=2, emb_train="yes")
         v1.finish()
@@ -53,6 +55,38 @@ class TestVocab1(unittest.TestCase):
         c = v1.count("d")
         assert c == 2
 
+    def test_vocab2(self):
+        # test using embedding file
+        # but first some fake counts for the 20 words in there
+        cnt1 = {'was': 20, 'as': 10, 'las': 12, 'mas': 1, 'please': 33, 'say': 40, 'sama': 1, 'always': 21, 'mais': 2,
+                'because': 33, 'esta': 5, 'last': 11, 'thanks': 13, 'ass': 13, 'has': 55, 'pas': 1, 'said': 25,
+                'bisa': 2, 'same': 13, 'days': 21}
+        v1 = Vocab(cnt1, emb_train="yes", emb_file=EMBFILE20_50TXT)
+        v1.finish()
+        # this should contain all the entries from cnt1 plus the pad and OOV indices now
+        assert len(v1.itos) == len(cnt1)+2
+        # we should be able to get all the embedding vectors as one big matrix
+        allembs = v1.get_embeddings()
+        # logger.info("allembs=%s" % allembs)
+
+    def test_vocab2(self):
+        # test using embedding file
+        # but first some fake counts for the 20 words in there
+        cnt1 = {'was': 20, 'as': 10, 'las': 12, 'mas': 1, 'please': 33, 'say': 40, 'sama': 1, 'always': 21, 'mais': 2,
+                'because': 33, 'esta': 5, 'last': 11, 'thanks': 13, 'ass': 13, 'has': 55, 'pas': 1, 'said': 25,
+                'bisa': 2, 'same': 13, 'days': 21}
+        v1 = Vocab(cnt1, emb_train="yes", emb_file=EMBFILE20_50TXT, oov_vec_from="maxfreqavg", oov_vec_maxfreq=2)
+        v1.finish()
+        # this should contain all the entries from cnt1 plus the pad and OOV indices but minus the ones
+        # that got removed because the frequency is <= 2
+        logger.info("itos=%r" % v1.itos)
+        assert len(v1.itos) == len(cnt1)+2-5
+        # we should be able to get all the embedding vectors as one big matrix
+        allembs = v1.get_embeddings()
+        # logger.info("allembs shape=%s" % (allembs.shape,))
+        assert allembs.shape[0] == len(cnt1)+2-5
+        assert allembs.shape[1] == 25
+        # logger.info("allembs=%s" % allembs)
 
 class Tests4Features1test1(unittest.TestCase):
 
@@ -248,11 +282,10 @@ class Tests4Features1test1(unittest.TestCase):
         assert len(valset_conv) == 3
         vconvi2 = valset_conv[1]
         # print("DEBUG: vconvi2=", vconvi2, file=sys.stderr)
-        # assert vconvi2 == [[13, 157, 25, 104, 12, 319, 2, 6, 1, 1, 1, 1, 1, 1, 1, 151, 28, 14, 1, 14, 1, 215,
-        #                      1, 101, 1, 1], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        #                                      0.0, 0.0]]
-        assert vconvi2 == [[14, 158, 26, 105, 13, 320, 3, 7, 2, 2, 2, 2, 2, 2, 0, 152, 29, 15, 0, 15, 0, 216,
-                            0, 102, 0, 0], 0]
+        # assert vconvi2 == [[14, 158, 26, 105, 13, 320, 3, 7, 2, 2, 2, 2, 2, 2, 0, 152, 29, 15, 0, 15, 0, 216,
+        #                    0, 102, 0, 0], 0]
+        assert vconvi2 == [[14, 158, 26, 105, 13, 320, 1, 5, 2, 2, 2, 2, 2, 2, 0, 152, 29, 15, 0, 15, 0, 216, 0, 102,
+                            0, 0], 0]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep
@@ -283,11 +316,8 @@ class Tests4Features1test1(unittest.TestCase):
         batch_conv1 = next(iter(bconvb1))
         # print("DEBUG: !!!batch_conv1[1]=%s" % (batch_conv1[1],), file=sys.stderr)
         assert len(batch_conv1) == 4
-        assert batch_conv1[1] == [[1211, 1496, 10, 797, 24, 3076, 8, 4, 3, 3, 2, 3, 2, 2, 21, 55, 0, 87, 0, 3, 0, 392,
-                                   0, 301, 0, 78], 0]
-        #assert batch_conv1[1] == [[1210, 1495, 9, 796, 23, 3075, 7, 3, 2, 2, 1, 2, 1, 1, 20, 54, 1, 86, 1, 2, 1, 391,
-        #                           1, 300, 1, 77], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        #                                            0.0, 0.0, 0.0, 0.0]]
+        assert batch_conv1[1] == [[1211, 1496, 10, 797, 24, 3076, 6, 2, 3, 3, 2, 3, 2, 2, 21, 55, 0, 87, 0, 3, 0,
+                                  392, 0, 301, 0, 78], 0]
         bconvb2 = ds.batches_converted(train=True, batch_size=4, reshape=True)
         batch_conv2 = next(iter(bconvb2))
         # print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)

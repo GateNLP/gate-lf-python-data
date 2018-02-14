@@ -1,7 +1,7 @@
-from __future__ import print_function
 from . vocab import Vocab
 import logging
 import sys
+
 
 class Vocabs(object):
     """A class for managing all the vocab instances that are needed by features"""
