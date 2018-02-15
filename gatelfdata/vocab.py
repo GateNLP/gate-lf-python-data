@@ -131,7 +131,7 @@ class Vocab(object):
                 reader = gzip.open
             else:
                 reader = open
-            with reader(emb_file, 'r', encoding="utf-8") as infile:
+            with reader(emb_file, 'rt', encoding="utf-8") as infile:
                 n_lines = 0
                 for line in infile:
                     if n_lines == 0 and re.match(r'^\s*[0-9]+\s+[0-9]+\s*$', line):
@@ -147,7 +147,7 @@ class Vocab(object):
                         if word in self.stoi:
                             self.stoe[word] = embs
                 # update the emb_dims setting
-                if embs:
+                if len(self.stoe) > 0:
                     self.emb_dims = len(embs)
         elif emb_file.endswith(".vocab") or emb_file.endswith(".npy"):
             raise Exception("TODO: format .vocab/.npy not yet implemented!")
@@ -334,8 +334,16 @@ class Vocab(object):
             for s in todelete:
                 del self.freqs[s]
 
-        # TODO: somewhere around here, if we have mapping, then ADD the words not in our vocab
-        # from the embeddings to our vocab, afterwards re-build the datastructures!!
+        # TODO: !!!somewhere around here, if we have mapping, then:
+        # * add random embedding vectors to stoe for words only in our vocab: DONE
+        # * extend our own vocab by the embeddings words not already in there
+        # The latter requires re-building our datastructures
+        # (NOTE: for mapping we always expect embeddings to be loaded, this has been checked earlier)
+        if self.emb_train == "mapping":
+            # add random vectors to all vocab entries not in the embeddings
+            for s in self.itos:
+                if s not in self.stoe:
+                    self.stoe[s] = self.rnd_vec(dims=self.emb_dims)
 
         # now if we deleted words, first rebuild the itos and then the stoi also update n
         if have_deleted:
@@ -355,6 +363,7 @@ class Vocab(object):
             self.embeddings = np.zeros((self.n, self.emb_dims))
             for i in range(self.n):
                 w = self.itos[i]
+                # we should not get a key error here since we should have reduced our own vocab to what is in stoe
                 emb = self.stoe[w]
                 # print("DEBUG: w=", w, "emb=", emb, file=sys.stderr)
                 # print("DEBUG: np=", np.array(emb), file=sys.stderr)
@@ -366,6 +375,7 @@ class Vocab(object):
         # self.freqs = None
 
         self.finished = True
+
 
     def idx2string(self, idx):
         """Return the string for this index"""
