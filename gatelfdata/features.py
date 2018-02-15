@@ -70,6 +70,9 @@ class Features(object):
     def __iter__(self):
         return iter(self.features)
 
+    def __getitem__(self, item):
+        return self.features[item]
+
     def __call__(self, valuelist, idxs=None):
         # For a feature vector:
         # this will go through each input and run it through the stored feature
