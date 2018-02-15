@@ -22,7 +22,10 @@ class Vocabs(object):
                 vocab.add_counts(counts)
             else:
                 emb_train = attrinfo.get("emb_train")
-                vocab = Vocab(featurestats["stringCounts"], emb_id=emb_id, emb_train=emb_train)
+                emb_file = attrinfo.get("emb_file")
+                emb_dims = attrinfo.get("emb_dims")
+                vocab = Vocab(featurestats["stringCounts"],
+                              emb_id=emb_id, emb_train=emb_train, emb_file=emb_file, emb_dims=emb_dims)
                 cls.vocabs[emb_id] = vocab
 
     @classmethod
