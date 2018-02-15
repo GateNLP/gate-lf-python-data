@@ -113,6 +113,15 @@ class Vocab(object):
                             "got emb_train=%s and emb_file=%s" % (self.emb_train, self.emb_file))
 
 
+    # TODO: encapsulate the self.stoe access: once we use loading the memory mapped numpy array
+    # as an alternative loading method, we will have two possible ways of how to get the embedding,
+    # either through self.stoe directly or though self.stoeidx to get the index and then the matrix
+    # to get the embedding. Instead implement a method _get_emb(str) which will handle this
+    # correctly. We also need to modify the code in finish() for removing embeddings to use
+    # a method _del_emb(str) to remove from self.stoe or self.stoidx and finally "finish" the
+    # embeddings to create the final packed matrix in all situations, for caching and fast
+    # re-loading!
+
     def load_embeddings(self, emb_file, only4vocab=False):
         """Load pre-calculated embeddings from the given file. This will update embd_dim as needed!
         Currently only supports text format, compressed text format or a two file format where
