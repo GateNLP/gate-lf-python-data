@@ -88,6 +88,7 @@ class TestVocab1(unittest.TestCase):
         assert allembs.shape[1] == 25
         # logger.info("allembs=%s" % allembs)
 
+
 class Tests4Features1test1(unittest.TestCase):
 
     def test_t1(self):
@@ -96,6 +97,22 @@ class Tests4Features1test1(unittest.TestCase):
         metafile = ds.metafile
         # print("debug: metafile=", metafile, file=sys.stderr)
         assert Dataset._modified4meta(metafile, name_part="train.val").endswith("train.val.json")
+
+
+    def test_t1_1(self):
+        logger.info("Running Tests4Features1test1/test_t1_1")
+        # test overriding the meta settings: override the "token" embeddings to have emb_dims=123
+        # and emb_train=mapping and an emb_file
+        ds = Dataset(TESTFILE3, override_meta_embs={"emb_id": "token", "emb_dims": 123, "emb_train": "yes"})
+        feats = ds.features
+        # get the vocab of the first feature
+        vocf1 = feats[0].vocab
+        # print("DEBUG: emb_id=", vocf1.emb_id, "emb_dims=", vocf1.emb_dims, "emb_train=", vocf1.emb_train,
+        #      "emb_file=", vocf1.emb_file, file=sys.stderr)
+        assert vocf1.emb_id == "token"
+        assert vocf1.emb_dims == 123
+
+
 
     def test_t2(self):
         logger.info("Running Tests4Features1test1/test_t2")
@@ -140,6 +157,7 @@ class Tests4Features1test1(unittest.TestCase):
         logger.info("Converted indep1=%r", indep1_conv)
         ngram1 = indep1_conv[0]
         assert len(ngram1) == 6
+        # print("DEBUG ngram1[0]=", ngram1[0], file=sys.stderr)
         assert ngram1[0] == 3543
         assert ngram1[1] == 9
         it1 = iter(ds.instances_converted(train=False, convert=True))
