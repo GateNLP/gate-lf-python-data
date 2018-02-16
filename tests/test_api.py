@@ -29,6 +29,19 @@ EMBFILE20_50TXT = os.path.join(DATADIR, "emb-mini20-25.txt")
 EMBFILE20_50GZ = os.path.join(DATADIR, "emb-mini20-25.txt.gz")
 
 
+class TestUtils(unittest.TestCase):
+
+    def test_utils_1(self):
+        l1 = [1, 2, 3]
+        Dataset.pad_list_(l1, 10, pad_value=0)
+        assert l1 == [1, 2, 3, 0, 0, 0, 0, 0, 0, 0]
+        l1 = [1, 2, 3]
+        Dataset.pad_list_(l1, 10, pad_value=0, pad_left=True)
+        assert l1 == [0, 0, 0, 0, 0, 0, 0, 1, 2, 3]
+        l2 = [[1, 2], [], [1, 2, 3, 4], [1], [2, 3]]
+        Dataset.pad_matrix_(l2, pad_value=0)
+        assert l2 == [[1, 2, 0, 0], [0, 0, 0, 0], [1, 2, 3, 4], [1, 0, 0, 0], [2, 3, 0, 0]]
+
 class TestVocab1(unittest.TestCase):
 
     def test_vocab1(self):
@@ -88,6 +101,20 @@ class TestVocab1(unittest.TestCase):
         assert allembs.shape[1] == 25
         # logger.info("allembs=%s" % allembs)
 
+
+class Tests4Batches(unittest.TestCase):
+
+    def test_reshape1(self):
+        # test reshaping sequence learning batches
+        # a simple tiny batch of 3 sequences of feature vectors, each having 2 features and a target
+        # the sequence lengths are 1,4,2
+        batch1 = [
+            [[[111, 112]], [11]],
+            [[[211, 212], [221, 222], [231, 232], [241, 242]], [21, 22, 23, 23]],
+            [[[311, 312], [321, 322]], [31, 32]]
+        ]
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, nClasses=7, isSequence=True)
+        print("DEBUG: batch1_reshape=", batch1_reshape, file=sys.stderr)
 
 class Tests4Features1test1(unittest.TestCase):
 

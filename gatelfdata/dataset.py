@@ -436,14 +436,18 @@ class Dataset(object):
                 thelist.append(pad_value)
         return thelist
 
-    def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False, pad=True):
-        """Reshape the list of converted instances into what is expected for training on a batch.
-        TODO: currently this only works properly for non-sequence instances: sequence instances need to get padded!
-        NOTE: for non-sequence instances, we pad all list-typed features to the maximum length. If from_original
-        is true, the padding is done with empty strings, otherwise with integer zeros.
-        NOTE: as_numpy=True for from_original=True currently only converts the result of converting
-        the outermost list to a numpy array which will automatically also convert the embedded lists.
-        """
+    @staticmethod
+    def pad_matrix_(matrix, pad_left=False, pad_value=None):
+        """Given a list of lists, determines the maximum length of the inner lists and pads all those
+        lids with the pad_value to have equal lengths. CAUTION! May modify any of the lists and
+        also returns the matrix."""
+        tosize = max([len(x) for x in matrix])
+        for l in matrix:
+            Dataset.pad_list_(l, tosize, pad_left=pad_left, pad_value=pad_value)
+
+    @staticmethod
+    def reshape_batch_helper(instances, as_numpy=False, pad_left=False, from_original=False, pad=True,
+                             nFeatures=None, nClasses=None, isSequence=None):
         # TODO: now that we already pad the non-numpy lists, converting to numpy does not need to
         # care about equal size lists anymore!!!
         logger = logging.getLogger(__name__)
@@ -453,19 +457,19 @@ class Dataset(object):
         # we will create as many lists for the independent part as we have features
         features_list = []
         targets = []
-        max_seq_lengths = [0 for i in range(self.nFeatures)]
+        max_seq_lengths = [0 for i in range(nFeatures)]
         max_target_seq = 0
-        n_classes = self.nClasses
-        is_sequence = self.isSequence
-        for i in range(self.nFeatures):
+        n_classes = nClasses
+        is_sequence = isSequence
+        for i in range(nFeatures):
             features_list.append([])
         # we now got a list of empty lists, one empty list for each feature, now put the values
         # of each of the features in the independent part in there.
         for instance in instances:
             (indep, dep) = instance
-            # print("DEBUG: len(indep)=%r, nFeature=%r" % (len(indep), self.nFeatures))
-            assert len(indep) == self.nFeatures
-            for i in range(self.nFeatures):
+            # print("DEBUG: len(indep)=%r, nFeature=%r" % (len(indep), nFeatures))
+            assert len(indep) == nFeatures
+            for i in range(nFeatures):
                 fv = indep[i]
                 if isinstance(fv, list):
                     lf = len(fv)
@@ -498,7 +502,7 @@ class Dataset(object):
             # We start with a list of nFeatures features, each represented as a list
             # if that list contains itself lists, i.e. max_seq_lengths for it is > 0,
             # then convert that list of lists into a numpy matrix
-            for i in range(self.nFeatures):
+            for i in range(nFeatures):
                 if max_seq_lengths[i] > 0:
                     # this feature is represented as batchsize sublists
                     values = features_list[i]
@@ -550,6 +554,20 @@ class Dataset(object):
             targets = np.array(targets, dtype=object)
         ret = (features_list, targets)
         return ret
+
+    def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False, pad=True):
+        """Reshape the list of converted instances into what is expected for training on a batch.
+        TODO: currently this only works properly for non-sequence instances: sequence instances need to get padded!
+        NOTE: for non-sequence instances, we pad all list-typed features to the maximum length. If from_original
+        is true, the padding is done with empty strings, otherwise with integer zeros.
+        NOTE: as_numpy=True for from_original=True currently only converts the result of converting
+        the outermost list to a numpy array which will automatically also convert the embedded lists.
+        """
+        return Dataset.reshape_batch_helper(instances, as_numpy=as_numpy, pad_left=pad_left,
+                                            from_original=from_original, pad=pad,
+                                            nFeatures=self.nFeatures, nClasses=self.nClasses,
+                                            isSequence=self.isSequence)
+
 
     def batches_original(self, train=True, file=None, reshape=True, batch_size=100, pad_left=False, as_numpy=False):
         """Return a batch of instances in original format for training.
