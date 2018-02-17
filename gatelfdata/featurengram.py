@@ -14,7 +14,10 @@ class FeatureNgram(object):
         self.featurestats = featurestats
         self.vocab = Vocabs.get_vocab(attrinfo)
 
-    def type(self):
+    def type_converted(self):
+        return "indexlist"
+
+    def type_original(self):
         return "ngram"
 
     def __call__(self, value):

@@ -111,11 +111,11 @@ class Tests4Batches(unittest.TestCase):
             [[21, 22], 2],
             [[31, 32], 3]
         ]
-        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, nClasses=3, isSequence=False)
-        print("DEBUG: reshape_class_1: batch1_reshape=", batch1_reshape, file=sys.stderr)
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, isSequence=False)
+        # print("DEBUG: reshape_class_1: batch1_reshape=", batch1_reshape, file=sys.stderr)
         assert batch1_reshape == ([[11, 21, 31], [12, 22, 32]], [1, 2, 3])
-        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, nFeatures=2, nClasses=3, isSequence=False)
-        print("DEBUG: reshape_class_1: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
+        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, nFeatures=2, isSequence=False)
+        # print("DEBUG: reshape_class_1: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
         ## NOTE: The numpy reshape returns floats for the classes, we should check if and when this is ok!
 
     def test_reshape_class2(self):
@@ -128,11 +128,11 @@ class Tests4Batches(unittest.TestCase):
             [[[211, 212], [221, 222, 223, 224]], 2],
             [[[311], [321, 322]], 3]
         ]
-        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, nClasses=3, isSequence=False)
-        print("DEBUG: reshape_class_2: batch1_reshape=", batch1_reshape, file=sys.stderr)
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, isSequence=False)
+        # print("DEBUG: reshape_class_2: batch1_reshape=", batch1_reshape, file=sys.stderr)
         assert batch1_reshape == ([[[111, 112, 113], [211, 212, 0], [311, 0, 0]], [[121, 0, 0, 0], [221, 222, 223, 224], [321, 322, 0, 0]]], [1, 2, 3])
-        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, nFeatures=2, nClasses=3, isSequence=False)
-        print("DEBUG: reshape_class_2: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
+        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, nFeatures=2, isSequence=False)
+        # print("DEBUG: reshape_class_2: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
         ## NOTE: The numpy reshape returns floats for the classes, we should check if and when this is ok!
 
 
@@ -141,12 +141,16 @@ class Tests4Batches(unittest.TestCase):
         # a simple tiny batch of 3 sequences of feature vectors, each having 2 features and a target
         # the sequence lengths are 1,4,2
         batch1 = [
-            [[[111, 112]], [11]],
-            [[[211, 212], [221, 222], [231, 232], [241, 242]], [21, 22, 23, 23]],
-            [[[311, 312], [321, 322]], [31, 32]]
+            [[[111, 112]], [-11]],
+            [[[211, 212], [221, 222], [231, 232], [241, 242]], [-21, -22, -23, -23]],
+            [[[311, 312], [321, 322]], [-31, -32]]
         ]
-        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, nClasses=7, isSequence=True)
-        print("DEBUG: reshape_seq1: batch1_reshape=", batch1_reshape, file=sys.stderr)
+        # print("DEBUG: reshape_seq1: batch1=", batch1, file=sys.stderr)
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, feature_types=["index", "index"], isSequence=True)
+        # print("DEBUG: reshape_seq1: batch1_reshape=", batch1_reshape, file=sys.stderr)
+        assert batch1_reshape == ([[[111, 0, 0, 0], [211, 221, 231, 241],
+                                    [311, 321, 0, 0]], [[112, 0, 0, 0], [212, 222, 232, 242], [312, 322, 0, 0]]],
+                                  [[-11, 0, 0, 0], [-21, -22, -23, -23], [-31, -32, 0, 0]])
 
 class Tests4Features1test1(unittest.TestCase):
 
@@ -303,9 +307,10 @@ class Tests4Features1test1(unittest.TestCase):
         # we expect a tuple for indep and dep
         assert len(valset_conv_b) == 2
         indep1, dep1 = valset_conv_b
-        # the indep part should now have lenth one because there is only one features
+        # the indep part should now have lenth one because there is only one feature
         assert len(indep1) == 1
         # there should be 3 values for that first feature
+        # print("DEBUG: indep1[0]=%r" % (indep1[0]), file=sys.stderr)
         assert len(indep1[0]) == 3
         # get a batch of original data
         bitb1 = ds.batches_original(train=True, batch_size=4, reshape=False)
@@ -407,47 +412,47 @@ class Tests4Features1test1(unittest.TestCase):
         logger.info("Running Tests4Features1test1/test_t8")
         ds = Dataset(TESTFILE3, reuse_files=True)
         # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
-        num_idxs = ds.get_numeric_feature_idxs()
+        num_idxs = ds.get_float_feature_idxs()
         print(file=sys.stderr)
         print("File", TESTFILE3, file=sys.stderr)
-        print("DEBUG num_idxs=", num_idxs, file=sys.stderr)
-        nom_idxs = ds.get_nominal_feature_idxs()
-        print("DEBUG nom_idxs=", nom_idxs, file=sys.stderr)
-        ngr_idxs = ds.get_ngram_feature_idxs()
-        print("DEBUG ngr_idxs=", ngr_idxs, file=sys.stderr)
+        print("DEBUG float_idxs=", num_idxs, file=sys.stderr)
+        nom_idxs = ds.get_index_feature_idxs()
+        print("DEBUG index_idxs=", nom_idxs, file=sys.stderr)
+        ngr_idxs = ds.get_indexlist_feature_idxs()
+        print("DEBUG indexlist_idxs=", ngr_idxs, file=sys.stderr)
 
         ds = Dataset(TESTFILE4, reuse_files=True)
         # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
-        num_idxs = ds.get_numeric_feature_idxs()
+        num_idxs = ds.get_float_feature_idxs()
         print(file=sys.stderr)
         print("File", TESTFILE4, file=sys.stderr)
-        print("DEBUG num_idxs=", num_idxs, file=sys.stderr)
-        nom_idxs = ds.get_nominal_feature_idxs()
-        print("DEBUG nom_idxs=", nom_idxs, file=sys.stderr)
-        ngr_idxs = ds.get_ngram_feature_idxs()
-        print("DEBUG ngr_idxs=", ngr_idxs, file=sys.stderr)
+        print("DEBUG float_idxs=", num_idxs, file=sys.stderr)
+        nom_idxs = ds.get_index_feature_idxs()
+        print("DEBUG index_idxs=", nom_idxs, file=sys.stderr)
+        ngr_idxs = ds.get_indexlist_feature_idxs()
+        print("DEBUG indexlist_idxs=", ngr_idxs, file=sys.stderr)
 
         ds = Dataset(TESTFILE2, reuse_files=True)
         # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
-        num_idxs = ds.get_numeric_feature_idxs()
+        num_idxs = ds.get_float_feature_idxs()
         print(file=sys.stderr)
         print("File", TESTFILE2, file=sys.stderr)
-        print("DEBUG num_idxs=", num_idxs, file=sys.stderr)
-        nom_idxs = ds.get_nominal_feature_idxs()
-        print("DEBUG nom_idxs=", nom_idxs, file=sys.stderr)
-        ngr_idxs = ds.get_ngram_feature_idxs()
-        print("DEBUG ngr_idxs=", ngr_idxs, file=sys.stderr)
+        print("DEBUG float_idxs=", num_idxs, file=sys.stderr)
+        nom_idxs = ds.get_index_feature_idxs()
+        print("DEBUG index_idxs=", nom_idxs, file=sys.stderr)
+        ngr_idxs = ds.get_indexlist_feature_idxs()
+        print("DEBUG indexlist_idxs=", ngr_idxs, file=sys.stderr)
 
         ds = Dataset(TESTFILE1, reuse_files=True)
         # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
-        num_idxs = ds.get_numeric_feature_idxs()
+        num_idxs = ds.get_float_feature_idxs()
         print(file=sys.stderr)
         print("File", TESTFILE1, file=sys.stderr)
-        print("DEBUG num_idxs=", num_idxs, file=sys.stderr)
-        nom_idxs = ds.get_nominal_feature_idxs()
-        print("DEBUG nom_idxs=", nom_idxs, file=sys.stderr)
-        ngr_idxs = ds.get_ngram_feature_idxs()
-        print("DEBUG ngr_idxs=", ngr_idxs, file=sys.stderr)
+        print("DEBUG float_idxs=", num_idxs, file=sys.stderr)
+        nom_idxs = ds.get_index_feature_idxs()
+        print("DEBUG index_idxs=", nom_idxs, file=sys.stderr)
+        ngr_idxs = ds.get_indexlist_feature_idxs()
+        print("DEBUG indexlist_idxs=", ngr_idxs, file=sys.stderr)
 
 
 if __name__ == '__main__':

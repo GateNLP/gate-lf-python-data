@@ -16,7 +16,10 @@ class FeatureNumeric(object):
         list of values. The value should be a float!"""
         return valueorlist
 
-    def type(self):
+    def type_converted(self):
+        return "float"
+
+    def type_original(self):
         return "numeric"
 
     def __str__(self):

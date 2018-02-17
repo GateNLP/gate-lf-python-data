@@ -17,8 +17,11 @@ class FeatureNominalEmbs(object):
         self.featurestats = featurestats
         self.vocab = Vocabs.get_vocab(attrinfo)
 
-    def type(self):
+    def type_original(self):
         return "nominal"
+
+    def type_converted(self):
+        return "index"
 
     def __call__(self, value):
         """Convert a value of the expected type for this feature to a value that can be

@@ -16,7 +16,10 @@ class FeatureNominal1ofk(object):
         self.featurestats = featurestats
         self.vocab = Vocabs.get_vocab(attrinfo)
 
-    def type(self):
+    def type_converted(self):
+        return "index"
+
+    def type_original(self):
         return "nominal"
 
     def __call__(self, value):

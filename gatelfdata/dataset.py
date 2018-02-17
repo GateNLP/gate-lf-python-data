@@ -134,12 +134,12 @@ class Dataset(object):
                 logger.info("Found and using converted data file %s" % self.converted_data_file)
         # private fields
         self._have_feature_idxs = False
-        self._nominal_feature_idxs = None
-        self._numeric_feature_idxs = None
-        self._ngram_feature_idxs = None
-        self._nominal_features = None
-        self._numeric_features = None
-        self._ngram_features = None
+        self._index_feature_idxs = None
+        self._float_feature_idxs = None
+        self._indexlist_feature_idxs = None
+        self._index_features = None
+        self._float_features = None
+        self._indexlist_features = None
 
     def instances_as_string(self, train=False, file=None):
         """Returns an iterable that allows to read the original instance data rows as a single string.
@@ -437,17 +437,24 @@ class Dataset(object):
         return thelist
 
     @staticmethod
-    def pad_matrix_(matrix, pad_left=False, pad_value=None):
-        """Given a list of lists, determines the maximum length of the inner lists and pads all those
-        lids with the pad_value to have equal lengths. CAUTION! May modify any of the lists and
-        also returns the matrix."""
-        tosize = max([len(x) for x in matrix])
+    def pad_matrix_(matrix, tosize=None, pad_left=False, pad_value=None):
+        """Given a list of lists, pads all the inner list to size length or if size is None, first determines
+        the longest inner list and pads to that length. CAUTION: modifies the matrix!"""
+        if not tosize:
+            tosize = max([len(x) for x in matrix])
         for l in matrix:
             Dataset.pad_list_(l, tosize, pad_left=pad_left, pad_value=pad_value)
 
     @staticmethod
-    def reshape_batch_helper(instances, as_numpy=False, pad_left=False, from_original=False, pad=True,
+    def reshape_batch_helper_old(instances, as_numpy=False, pad_left=False, from_original=False, pad=True,
                              nFeatures=None, nClasses=None, isSequence=None):
+        """Reshapes a list of instances where each instance is a two-element list of an independent and dependent/target
+        part into a tuple where the first part is a list of features and the second part is the list of targets.
+        If the instances are not for sequence tagging, then each list that corresponds to a feature contains as many
+        values as there are instances. If the value of the feature is a sequence, then each value is a padded list.
+        For sequence tagging, The independent part contains as many lists as there are features, each of these
+        lists contains as many elements as there are instances. These elements in turn are lists, representing the
+        values of the feature for each feature vector in the sequence for the instance. """
         # TODO: now that we already pad the non-numpy lists, converting to numpy does not need to
         # care about equal size lists anymore!!! However, the numpy way may still be faster!
         logger = logging.getLogger(__name__)
@@ -564,6 +571,132 @@ class Dataset(object):
             targets = np.array(targets, dtype=object)
         ret = (features_list, targets)
         return ret
+        # END of reshape_batch_helper_old
+
+    @staticmethod
+    def reshape_batch_helper(instances, as_numpy=False, pad_left=False, from_original=False, pad=True,
+                             nFeatures=None, isSequence=None, feature_types=None):
+        """Reshapes a list of instances where each instance is a two-element list of an independent and dependent/target
+        part into a tuple where the first part is a list of features and the second part is the list of targets.
+        If the instances are not for sequence tagging, then each list that corresponds to a feature contains as many
+        values as there are instances. If the value of the feature is a sequence, then each value is a padded list.
+        For sequence tagging, The independent part contains as many lists as there are features, each of these
+        lists contains as many elements as there are instances. These elements in turn are lists, representing the
+        values of the feature for each feature vector in the sequence for the instance.
+        The feature_types list must be specified if isSequence is True, in that case, nFeatures is not needed."""
+
+        if feature_types:
+            nFeatures = len(feature_types)
+
+        # create the target data structures: for the independent part this is a list with nFeatures sublists
+        # for the targets this is a single list
+        out_indep = [[] for i in range(nFeatures)]
+        out_dep = []
+
+        # if not sequences, transpose the input features and add the targets
+        if not isSequence:
+            flist_max_len = [0 for i in range(nFeatures)]
+            for instance in instances:
+                (indep, dep) = instance
+                assert len(indep) == nFeatures
+                for i in range(nFeatures):
+                    out_indep[i].append(indep[i])
+                    if isinstance(indep[i], list):
+                        flist_max_len[i] = max(flist_max_len[i], len(indep[i]))
+                out_dep.append(dep)
+            # now that we have all the lists of feature values, if the values are themself lists, pad them:
+            # Here it is easy to find the pad_value: since we can only have ngrams as the reason for list values,
+            # we use a "" for the original and 0 for converted
+            if from_original:
+                pad_value = ''
+            else:
+                pad_value = 0
+            for i in range(nFeatures):
+                if flist_max_len[i] > 0:
+                    Dataset.pad_matrix_(out_indep[i], tosize=flist_max_len[i], pad_left=pad_left, pad_value=pad_value)
+            if as_numpy:
+                out_dep = np.array(out_dep)
+                for i in range(nFeatures):
+                    out_indep[i] = np.array(out_indep[i])
+        else: # isSequence is True
+            if not feature_types:
+                raise Exception("Need a list of feature types if isSequence is True")
+            # this are instances with sequences of feature vectors and sequences of targets
+            # for each feature, there are as many values as there are feature vectors in the sequence for that instance
+            # for the final output, we need to pad all the features to the length of the longest sequence
+            seq_max_len = 0
+            for instance in instances:
+                (indep, dep) = instance
+                # indep is a list of feature vectors!
+                # the number of featue vectors must be equal to the number of targets
+                seq_len = len(indep)
+                assert len(dep) == seq_len
+                seq_max_len = max(seq_len, seq_max_len)
+                # now we need to add a list to each of the features, each list is the
+                # values for a feature for all the sequence elements.
+                for feature_idx in range(nFeatures):
+                    values = []
+                    for el_idx in range(seq_len):
+                        val = indep[el_idx][feature_idx]
+                        if isinstance(val, list):
+                            raise Exception("Sequences/ngrams within sequences of feature vectors not supported")
+                        values.append(val)
+                    out_indep[feature_idx].append(values)
+                out_dep.append(dep)
+            # we now have all the features and targets, need to pad all of those to the maximum sequence length
+            # NOTE: currently the targets for sequence tagging are always nominal, so padding is done with
+            # '' for original and 0 otherwise
+            if from_original:
+                pad_value = ''
+            else:
+                pad_value = 0
+            Dataset.pad_matrix_(out_dep, tosize=seq_max_len, pad_left=pad_left, pad_value=pad_value)
+            # to pad the features, we need to know the type of the feature and if we have original format:
+            # For original:
+            # "nominal" - ""
+            # "number" - 0.0
+            # "boolean" - False
+            # For converted:
+            # "float" - 0.0
+            # "index" - 0
+            # Note that for sequences we cannot have nested ngrams so "ngram" / "indexlist" cannot occur here!
+            for i in range(nFeatures):
+                ftype = feature_types[i]
+                if from_original:
+                    if ftype == "nominal":
+                        pad_value = ''
+                    elif ftype == "number":
+                        pad_value = 0.0
+                    elif ftype == "boolean":
+                        pad_value = False
+                    else:
+                        raise Exception("Odd type for feature %s: %s" % (i, ftype))
+                else:
+                    if ftype == "float":
+                        pad_value = 0.0
+                    else:
+                        pad_value = 0
+            # pad each feature
+            for f in out_indep:
+                Dataset.pad_matrix_(f, seq_max_len, pad_left=pad_left, pad_value=pad_value)
+            if as_numpy:
+                out_dep = np.array(out_dep)
+                for i in range(nFeatures):
+                    out_indep[i] = np.array(out_indep[i])
+
+        if as_numpy:
+            # convert the features list itself to numpy
+            # NOTE: even with dtype=object, numpy will try to broadcast as much as possible, so if
+            # the list contains numpy arrays for 2 features which are sequences of different max size,
+            # the there will be two matrices and the outermost array cannot be built.
+            # Instead we create an empty object array of the right size first and then assign the elemts
+            tmp = np.empty(nFeatures, dtype=object)
+            for i in range(nFeatures):
+                tmp[i] = out_indep[i]
+            out_indep = tmp
+        ret = (out_indep, out_dep)
+        return ret
+
 
     def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False, pad=True):
         """Reshape the list of converted instances into what is expected for training on a batch.
@@ -573,9 +706,13 @@ class Dataset(object):
         NOTE: as_numpy=True for from_original=True currently only converts the result of converting
         the outermost list to a numpy array which will automatically also convert the embedded lists.
         """
+        if from_original:
+            feature_types = self.feature_types_original()
+        else:
+            feature_types = self.feature_types_converted()
         return Dataset.reshape_batch_helper(instances, as_numpy=as_numpy, pad_left=pad_left,
                                             from_original=from_original, pad=pad,
-                                            nFeatures=self.nFeatures, nClasses=self.nClasses,
+                                            feature_types=feature_types,
                                             isSequence=self.isSequence)
 
 
@@ -693,71 +830,84 @@ class Dataset(object):
                         raise Exception("We do not have a data file in converted format for batches_converted")
         return BatchConvertedIterable(whichfile, batch_size, self)
 
+    def feature_types_converted(self):
+        """Returns a list with the converted types of the features as a string name.
+        Possible values are 'float', 'index', 'indexlist'
+        """
+        return [f.type_converted() for f in self.features]
+
+    def feature_types_original(self):
+        """Returns a list with the original types of the features as a string name.
+        Possible values are 'nominal', 'number', 'ngram', 'boolean'
+        """
+        return [f.type_original() for f in self.features]
+
     def _calculate_feature_idxs(self):
-        """Helper method to calculate and cache all the per-type feature index lists.
-        NOTE: the type we get for each feature is either numeric (for actual numeric and boolean)
-        or nominal (for embeddings or one-hot encoded nominal values) or ngram (for sequences of nominal)."""
+        """Helper method to calculate and cache all the per-converted type feature index lists.
+        NOTE: the type we get for each feature is either float, index, or indexlist where index indicates
+        the index of a nominal value.
+        """
         if self._have_feature_idxs:
             return
-        self._numeric_feature_idxs = []
-        self._nominal_feature_idxs = []
-        self._ngram_feature_idxs = []
-        self._numeric_features = []
-        self._nominal_features = []
-        self._ngram_features = []
+        self._float_feature_idxs = []
+        self._index_feature_idxs = []
+        self._indexlist_feature_idxs = []
+        self._float_features = []
+        self._index_features = []
+        self._indexlist_features = []
         idx = 0
         for f in self.features:
-            t = f.type()
-            if t == "numeric":
-                self._numeric_feature_idxs.append(idx)
-                self._numeric_features.append(f)
-            elif t == "nominal":
-                self._nominal_feature_idxs.append(idx)
-                self._nominal_features.append(f)
-            elif t == "ngram":
-                self._ngram_feature_idxs.append(idx)
-                self._ngram_features.append(f)
+            t = f.type_converted()
+            if t == "float":
+                self._float_feature_idxs.append(idx)
+                self._float_features.append(f)
+            elif t == "index":
+                self._index_feature_idxs.append(idx)
+                self._index_features.append(f)
+            elif t == "indexlist":
+                self._indexlist_feature_idxs.append(idx)
+                self._indexlist_features.append(f)
             else:
                 raise Exception("Feature type unknown, looks like a bug: %s" % t)
             idx += 1
 
-    def get_numeric_feature_idxs(self):
+    def get_float_feature_idxs(self):
         """Return a list of indices of all numeric or boolean features"""
         if not self._have_feature_idxs:
             self._calculate_feature_idxs()
-        return self._numeric_feature_idxs
+        return self._float_feature_idxs
 
-    def get_nominal_feature_idxs(self):
+    def get_index_feature_idxs(self):
         """Return a list of indices of all nominal features represented by some index and
         ultimately by a vector"""
         if not self._have_feature_idxs:
             self._calculate_feature_idxs()
-        return self._nominal_feature_idxs
+        return self._index_feature_idxs
 
-    def get_ngram_feature_idxs(self):
+    def get_indexlist_feature_idxs(self):
         """Return a list of indices for all features which are ngrams, i.e. lists of embs."""
         if not self._have_feature_idxs:
             self._calculate_feature_idxs()
-        return self._ngram_feature_idxs
+        return self._indexlist_feature_idxs
 
-    def get_numeric_features(self):
+    def get_float_features(self):
         """Return a list of numeric or boolean features"""
         if not self._have_feature_idxs:
             self._calculate_feature_idxs()
-        return self._numeric_features
+        return self._float_features
 
-    def get_nominal_features(self):
+    def get_index_features(self):
         """Return a list of all nominal features represented by some index and
         ultimately by a vector"""
         if not self._have_feature_idxs:
             self._calculate_feature_idxs()
-        return self._nominal_features
+        return self._index_features
 
-    def get_ngram_features(self):
+    def get_indexlist_features(self):
         """Return a list of features which are ngrams, i.e. lists of embs."""
         if not self._have_feature_idxs:
             self._calculate_feature_idxs()
-        return self._ngram_features
+        return self._indexlist_features
 
     def get_info(self):
         """Return a concise description of the learning problem that makes it easier to understand
