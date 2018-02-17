@@ -104,7 +104,39 @@ class TestVocab1(unittest.TestCase):
 
 class Tests4Batches(unittest.TestCase):
 
-    def test_reshape1(self):
+    def test_reshape_class1(self):
+        # 3 instances, each having 2 features
+        batch1 = [
+            [[11, 12], 1],
+            [[21, 22], 2],
+            [[31, 32], 3]
+        ]
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, nClasses=3, isSequence=False)
+        print("DEBUG: reshape_class_1: batch1_reshape=", batch1_reshape, file=sys.stderr)
+        assert batch1_reshape == ([[11, 21, 31], [12, 22, 32]], [1, 2, 3])
+        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, nFeatures=2, nClasses=3, isSequence=False)
+        print("DEBUG: reshape_class_1: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
+        ## NOTE: The numpy reshape returns floats for the classes, we should check if and when this is ok!
+
+    def test_reshape_class2(self):
+        # 3 instances, each having 2 features, both features are sequences
+        # feature value numbers indicate: instance, feature number, sequence element
+        # Sequence lengths of first feature: 3, 2, 1,
+        # Sequence lengths of second feature: 1, 4, 2
+        batch1 = [
+            [[[111, 112, 113], [121]], 1],
+            [[[211, 212], [221, 222, 223, 224]], 2],
+            [[[311], [321, 322]], 3]
+        ]
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, nClasses=3, isSequence=False)
+        print("DEBUG: reshape_class_2: batch1_reshape=", batch1_reshape, file=sys.stderr)
+        assert batch1_reshape == ([[[111, 112, 113], [211, 212, 0], [311, 0, 0]], [[121, 0, 0, 0], [221, 222, 223, 224], [321, 322, 0, 0]]], [1, 2, 3])
+        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, nFeatures=2, nClasses=3, isSequence=False)
+        print("DEBUG: reshape_class_2: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
+        ## NOTE: The numpy reshape returns floats for the classes, we should check if and when this is ok!
+
+
+    def test_reshape_seq1(self):
         # test reshaping sequence learning batches
         # a simple tiny batch of 3 sequences of feature vectors, each having 2 features and a target
         # the sequence lengths are 1,4,2
@@ -114,7 +146,7 @@ class Tests4Batches(unittest.TestCase):
             [[[311, 312], [321, 322]], [31, 32]]
         ]
         batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, nClasses=7, isSequence=True)
-        print("DEBUG: batch1_reshape=", batch1_reshape, file=sys.stderr)
+        print("DEBUG: reshape_seq1: batch1_reshape=", batch1_reshape, file=sys.stderr)
 
 class Tests4Features1test1(unittest.TestCase):
 

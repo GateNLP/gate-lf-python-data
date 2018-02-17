@@ -449,7 +449,7 @@ class Dataset(object):
     def reshape_batch_helper(instances, as_numpy=False, pad_left=False, from_original=False, pad=True,
                              nFeatures=None, nClasses=None, isSequence=None):
         # TODO: now that we already pad the non-numpy lists, converting to numpy does not need to
-        # care about equal size lists anymore!!!
+        # care about equal size lists anymore!!! However, the numpy way may still be faster!
         logger = logging.getLogger(__name__)
         # instances is just a list of instances, where each instance is the format of "converted instances",
         # which consists of two sub lists for the independent and dependent part.
@@ -467,7 +467,10 @@ class Dataset(object):
         # of each of the features in the independent part in there.
         for instance in instances:
             (indep, dep) = instance
-            # print("DEBUG: len(indep)=%r, nFeature=%r" % (len(indep), nFeatures))
+            # For a non-sequence instance, indep is a list of nFeatures values, of which
+            # some could be sequence valued.
+            # But for a sequence instance, indep is a sequence of feature vectors.
+            print("DEBUG: len(indep)=%r, nFeatures=%r" % (len(indep), nFeatures))
             assert len(indep) == nFeatures
             for i in range(nFeatures):
                 fv = indep[i]
@@ -549,7 +552,14 @@ class Dataset(object):
             targets = arr
         if as_numpy:
             # convert the features list itself to numpy
-            features_list = np.array(features_list, dtype=object)
+            # NOTE: even with dtype=object, numpy will try to broadcast as much as possible, so if
+            # the list contains numpy arrays for 2 features which are sequences of different max size,
+            # the there will be two matrices and the outermost array cannot be built.
+            # Instead we create an empty object array of the right size first and then assign the elemts
+            tmp = np.empty(len(features_list), dtype=object)
+            for i in range(len(features_list)):
+                tmp[i] = features_list[i]
+            features_list = tmp
         if as_numpy and from_original:
             targets = np.array(targets, dtype=object)
         ret = (features_list, targets)
