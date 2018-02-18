@@ -8,7 +8,8 @@ import logging
 from .features import Features
 from .target import Target
 from .vocabs import Vocabs
-import sys
+# import sys
+
 
 class Dataset(object):
     """Class representing training data present in the meta and data files.
@@ -22,24 +23,24 @@ class Dataset(object):
         return re.sub(r'\.meta\.json', ".data.json", metafilename)
 
     @staticmethod
-    def _modified4meta(metafile, name_part=None, dir=None):
+    def _modified4meta(metafile, name_part=None, dirname=None):
         if not name_part:
             raise Exception("Parameter name_part must be specified")
         path, name = os.path.split(metafile)
         newname = re.sub(r'\.meta\.json', '.'+name_part+'.json', name)
-        if dir:
-            pathdir = dir
+        if dirname:
+            pathdir = dirname
         else:
             pathdir = path
         newpath = os.path.join(pathdir, newname)
         return newpath
 
-    def modified4meta(self, name_part=None, dir=None):
+    def modified4meta(self, name_part=None, dirname=None):
         """Helper method to construct the full path of one of the files this class creates from
         the original meta/data files. If dir is given, then it is the containing directory for the file.
         The name_part parameter specifies the part in the file name that will replace the "meta"
         in the original metafilename."""
-        return Dataset._modified4meta(self.metafile, name_part=name_part, dir=dir)
+        return Dataset._modified4meta(self.metafile, name_part=name_part, dirname=dirname)
 
     @staticmethod
     def load_meta(metafile):
@@ -197,7 +198,7 @@ class Dataset(object):
         assert len(indep) == len(self.meta["features"])
         # NOTE: this simply delegates the normalizing to each feature instance
         # TODO: We may also want to be able to support squashing functions and similar here.
-        if normalize=="meanvar":
+        if normalize == "meanvar":
             for i in range(len(self.meta["features"])):
                 if self.meta["features"][i]["datatype"] == "numeric":
                     # normalize it based on the feature stats
@@ -238,8 +239,14 @@ class Dataset(object):
         where strings are replaced by one hot vectors.
         If as_onehot is True, then nominal targets is onverted to onehot float vectors instead of
         integer indices (ignored for other target types).
-        TODO: if is_batch=True, a whole batch of targets is converted"""
-        return self.target(dep, as_onehot=as_onehot)
+        """
+        if is_batch:
+            ret = [self.target(dep[v], as_onehot=as_onehot) for v in dep]
+            if isinstance(dep, np.ndarray):
+                ret = np.array(ret)
+            return ret
+        else:
+            return self.target(dep, as_onehot=as_onehot)
 
     def convert_instance(self, instance, normalize="meanvar", is_reshaped_batch=False):
         """Convert an original representation of an instance as read from json to the converted representation.
@@ -258,7 +265,8 @@ class Dataset(object):
         dep_converted = self.convert_dep(dep)
         return [indep_converted, dep_converted]
 
-    def split(self, outdir=None, validation_size=None, validation_part=0.1, random_seed=1, convert=False, keep_orig=False):
+    def split(self, outdir=None, validation_size=None, validation_part=0.1, random_seed=1,
+              convert=False, keep_orig=False):
         """This splits the original file into an actual training file and a validation set file.
         This creates two new files in the same location as the original files, with the "data"/"meta"
         parts of the name replaced with "val" for validation and "train" for training. If converted is
@@ -278,8 +286,9 @@ class Dataset(object):
                 valsize = int(validation_size)
             else:
                 valsize = int(self.nInstances * validation_part)
-            if valsize <= 1 or valsize > int(self.nInstances/ 2.0):
-                raise Exception("Validation set size should not be less than 1 or more than half the data, but is %s (n=%s)" % (valsize, self.nInstances))
+            if valsize <= 1 or valsize > int(self.nInstances / 2.0):
+                raise Exception('Validation set size should not be less than 1 or more '
+                                'than half the data, but is %s (n=%s)' % (valsize, self.nInstances))
             # now get valsize integers from the range 0 to nInstances-1: these are the instance indices
             # we want to reserve for the validation set
             choices = np.random.choice(self.nInstances, size=valsize, replace=False)
@@ -290,10 +299,10 @@ class Dataset(object):
         else:
             # we just keep the empy valindices set
             pass
-        origtrainfile = self.modified4meta(name_part="orig.train", dir=outdir)
-        origvalfile = self.modified4meta(name_part="orig.val", dir=outdir)
-        convtrainfile = self.modified4meta(name_part="converted.train", dir=outdir)
-        convvalfile = self.modified4meta(name_part="converted.val", dir=outdir)
+        origtrainfile = self.modified4meta(name_part="orig.train", dirname=outdir)
+        origvalfile = self.modified4meta(name_part="orig.val", dirname=outdir)
+        convtrainfile = self.modified4meta(name_part="converted.train", dirname=outdir)
+        convvalfile = self.modified4meta(name_part="converted.val", dirname=outdir)
         outorigtrain = None
         outorigval = None
         outconvtrain = None
@@ -310,7 +319,8 @@ class Dataset(object):
             self.converted_train_file = convtrainfile
             outconvval = open(convvalfile, "w", encoding="utf-8")
             self.converted_val_file = convvalfile
-        # print("DEBUG origtrain/origval/convtrain/convval=%s/%s/%s/%s" % (outorigtrain, outorigval, outconvtrain, outconvval), file=sys.stderr)
+        # print("DEBUG origtrain/origval/convtrain/convval=%s/%s/%s/%s" % (outorigtrain, outorigval,
+        # outconvtrain, outconvval), file=sys.stderr)
         self.outdir = outdir
         i = 0
         for line in self.instances_as_string():
@@ -344,9 +354,8 @@ class Dataset(object):
         if not outfile:
             outfile = self.modified4meta(name_part="converted.data")
         self.converted_data_file = outfile
-        logger = logging.getLogger(__name__)
         with open(outfile, "w") as out:
-            for instance in self.instances_converted(train=False, convert=True):
+            for instance in self.instances_converted(train=False, convert=True, file=infile):
                 print(json.dumps(instance), file=out)
 
     def validation_set_orig(self):
@@ -354,7 +363,7 @@ class Dataset(object):
         method must have been run and either convert have been False or convert True and keep_orig True."""
         if not self.have_orig_split:
             raise Exception("We do not have the splitted original file, run the split method.")
-        validationsetfile = self.modified4meta(name_part="orig.val", dir=self.outdir)
+        validationsetfile = self.modified4meta(name_part="orig.val", dirname=self.outdir)
         valset = []
         with open(validationsetfile, "rt", encoding="utf-8") as inp:
             for line in inp:
@@ -367,7 +376,7 @@ class Dataset(object):
         method must have been run before with convert set to True."""
         if not self.have_conv_split:
             raise Exception("We do not have the splitted converted file, run the split method.")
-        validationsetfile = self.modified4meta(name_part="converted.val", dir=self.outdir)
+        validationsetfile = self.modified4meta(name_part="converted.val", dirname=self.outdir)
         valset = []
         with open(validationsetfile, "rt") as inp:
             for line in inp:
@@ -384,7 +393,7 @@ class Dataset(object):
         False then the original data file is read, otherwise if the train parameter is True, the
         train file is read."""
         class DataIterable(object):
-            def __init__(self, meta, datafile, parent, convert):
+            def __init__(self, meta, datafile, parent):
                 self.meta = meta
                 self.datafile = datafile
                 self.parent = parent
@@ -419,7 +428,7 @@ class Dataset(object):
                         whichfile = self.converted_data_file
                     else:
                         raise Exception("We do not have a data file in converted format for instance_as_string")
-        return DataIterable(self.meta, whichfile, self, convert=convert)
+        return DataIterable(self.meta, whichfile, self)
 
     @staticmethod
     def pad_list_(thelist, tosize, pad_left=False, pad_value=None):
@@ -447,7 +456,7 @@ class Dataset(object):
 
     @staticmethod
     def reshape_batch_helper(instances, as_numpy=False, pad_left=False, from_original=False, pad=True,
-                             nFeatures=None, isSequence=None, feature_types=None):
+                             n_features=None, is_sequence=None, feature_types=None):
         """Reshapes a list of instances where each instance is a two-element list of an independent and dependent/target
         part into a tuple where the first part is a list of features and the second part is the list of targets.
         If the instances are not for sequence tagging, then each list that corresponds to a feature contains as many
@@ -455,23 +464,26 @@ class Dataset(object):
         For sequence tagging, The independent part contains as many lists as there are features, each of these
         lists contains as many elements as there are instances. These elements in turn are lists, representing the
         values of the feature for each feature vector in the sequence for the instance.
-        The feature_types list must be specified if isSequence is True, in that case, nFeatures is not needed."""
+        The feature_types list must be specified if is_sequence is True, in that case, n_features is not needed."""
 
         if feature_types:
-            nFeatures = len(feature_types)
+            n_features = len(feature_types)
 
-        # create the target data structures: for the independent part this is a list with nFeatures sublists
+        if not pad and as_numpy:
+            raise Exception("Parameter pad must be True if as_numpy is True.")
+
+        # create the target data structures: for the independent part this is a list with n_features sublists
         # for the targets this is a single list
-        out_indep = [[] for i in range(nFeatures)]
+        out_indep = [[] for _ in range(n_features)]
         out_dep = []
 
         # if not sequences, transpose the input features and add the targets
-        if not isSequence:
-            flist_max_len = [0 for i in range(nFeatures)]
+        if not is_sequence:
+            flist_max_len = [0 for _ in range(n_features)]
             for instance in instances:
                 (indep, dep) = instance
-                assert len(indep) == nFeatures
-                for i in range(nFeatures):
+                assert len(indep) == n_features
+                for i in range(n_features):
                     out_indep[i].append(indep[i])
                     if isinstance(indep[i], list):
                         flist_max_len[i] = max(flist_max_len[i], len(indep[i]))
@@ -483,16 +495,16 @@ class Dataset(object):
                 pad_value = ''
             else:
                 pad_value = 0
-            for i in range(nFeatures):
-                if flist_max_len[i] > 0:
+            for i in range(n_features):
+                if flist_max_len[i] > 0 and pad:
                     Dataset.pad_matrix_(out_indep[i], tosize=flist_max_len[i], pad_left=pad_left, pad_value=pad_value)
             if as_numpy:
                 out_dep = np.array(out_dep)
-                for i in range(nFeatures):
+                for i in range(n_features):
                     out_indep[i] = np.array(out_indep[i])
-        else: # isSequence is True
+        else:  # is_sequence is True
             if not feature_types:
-                raise Exception("Need a list of feature types if isSequence is True")
+                raise Exception("Need a list of feature types if is_sequence is True")
             # this are instances with sequences of feature vectors and sequences of targets
             # for each feature, there are as many values as there are feature vectors in the sequence for that instance
             # for the final output, we need to pad all the features to the length of the longest sequence
@@ -506,7 +518,7 @@ class Dataset(object):
                 seq_max_len = max(seq_len, seq_max_len)
                 # now we need to add a list to each of the features, each list is the
                 # values for a feature for all the sequence elements.
-                for feature_idx in range(nFeatures):
+                for feature_idx in range(n_features):
                     values = []
                     for el_idx in range(seq_len):
                         val = indep[el_idx][feature_idx]
@@ -522,7 +534,8 @@ class Dataset(object):
                 pad_value = ''
             else:
                 pad_value = 0
-            Dataset.pad_matrix_(out_dep, tosize=seq_max_len, pad_left=pad_left, pad_value=pad_value)
+            if pad:
+                Dataset.pad_matrix_(out_dep, tosize=seq_max_len, pad_left=pad_left, pad_value=pad_value)
             # to pad the features, we need to know the type of the feature and if we have original format:
             # For original:
             # "nominal" - ""
@@ -532,7 +545,7 @@ class Dataset(object):
             # "float" - 0.0
             # "index" - 0
             # Note that for sequences we cannot have nested ngrams so "ngram" / "indexlist" cannot occur here!
-            for i in range(nFeatures):
+            for i in range(n_features):
                 ftype = feature_types[i]
                 if from_original:
                     if ftype == "nominal":
@@ -550,10 +563,11 @@ class Dataset(object):
                         pad_value = 0
             # pad each feature
             for f in out_indep:
-                Dataset.pad_matrix_(f, seq_max_len, pad_left=pad_left, pad_value=pad_value)
+                if pad:
+                    Dataset.pad_matrix_(f, seq_max_len, pad_left=pad_left, pad_value=pad_value)
             if as_numpy:
                 out_dep = np.array(out_dep)
-                for i in range(nFeatures):
+                for i in range(n_features):
                     out_indep[i] = np.array(out_indep[i])
 
         if as_numpy:
@@ -562,13 +576,12 @@ class Dataset(object):
             # the list contains numpy arrays for 2 features which are sequences of different max size,
             # the there will be two matrices and the outermost array cannot be built.
             # Instead we create an empty object array of the right size first and then assign the elemts
-            tmp = np.empty(nFeatures, dtype=object)
-            for i in range(nFeatures):
+            tmp = np.empty(n_features, dtype=object)
+            for i in range(n_features):
                 tmp[i] = out_indep[i]
             out_indep = tmp
         ret = (out_indep, out_dep)
         return ret
-
 
     def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False, pad=True):
         """Reshape the list of converted instances into what is expected for training on a batch.
@@ -585,8 +598,7 @@ class Dataset(object):
         return Dataset.reshape_batch_helper(instances, as_numpy=as_numpy, pad_left=pad_left,
                                             from_original=from_original, pad=pad,
                                             feature_types=feature_types,
-                                            isSequence=self.isSequence)
-
+                                            is_sequence=self.isSequence)
 
     def batches_original(self, train=True, file=None, reshape=True, batch_size=100, pad_left=False, as_numpy=False):
         """Return a batch of instances in original format for training.
@@ -616,7 +628,8 @@ class Dataset(object):
                         if len(collect) == 0:
                             break
                         if reshape:
-                            batch = self.parent.reshape_batch(collect, pad_left=pad_left, as_numpy=as_numpy, from_original=True)
+                            batch = self.parent.reshape_batch(collect, pad_left=pad_left, as_numpy=as_numpy,
+                                                              from_original=True)
                         else:
                             batch = collect
                         yield batch
@@ -636,7 +649,8 @@ class Dataset(object):
                         raise Exception("We do not have a data file in original format for batches_converted")
         return BatchOrigIterable(whichfile, batch_size, self)
 
-    def batches_converted(self, train=True, file=None, reshape=True, convert=False, batch_size=100, as_numpy=False, pad_left=False):
+    def batches_converted(self, train=True, file=None, reshape=True, convert=False, batch_size=100, as_numpy=False,
+                          pad_left=False):
         """Return a batch of instances for training. If reshape is True, this reshapes the data in the following ways:
         For classification, the independent part is a list of batchsize values for each feature. So for
         a batch size of 100 and 18 features, the inputs are a list of 18 lists of 100 values each.
@@ -799,7 +813,9 @@ class Dataset(object):
         return ret
 
     def __str__(self):
-        return "Dataset(meta=%s,isSeq=%s,nFeat=%s,N=%s)" % (self.metafile, self.isSequence, self.nAttrs, self.nInstances)
+        return "Dataset(meta=%s,isSeq=%s,nFeat=%s,N=%s)" % \
+               (self.metafile, self.isSequence, self.nAttrs, self.nInstances)
 
     def __repr__(self):
-        return "Dataset(meta=%s,isSeq=%s,nFeat=%s,N=%s,features=%r,target=%r)" % (self.metafile, self.isSequence, self.nAttrs, self.nInstances, self.features, self.target)
+        return "Dataset(meta=%s,isSeq=%s,nFeat=%s,N=%s,features=%r,target=%r)" % \
+               (self.metafile, self.isSequence, self.nAttrs, self.nInstances, self.features, self.target)

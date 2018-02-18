@@ -111,10 +111,10 @@ class Tests4Batches(unittest.TestCase):
             [[21, 22], 2],
             [[31, 32], 3]
         ]
-        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, isSequence=False)
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, n_features=2, is_sequence=False)
         # print("DEBUG: reshape_class_1: batch1_reshape=", batch1_reshape, file=sys.stderr)
         assert batch1_reshape == ([[11, 21, 31], [12, 22, 32]], [1, 2, 3])
-        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, nFeatures=2, isSequence=False)
+        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, n_features=2, is_sequence=False)
         # print("DEBUG: reshape_class_1: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
         ## NOTE: The numpy reshape returns floats for the classes, we should check if and when this is ok!
 
@@ -128,10 +128,10 @@ class Tests4Batches(unittest.TestCase):
             [[[211, 212], [221, 222, 223, 224]], 2],
             [[[311], [321, 322]], 3]
         ]
-        batch1_reshape = Dataset.reshape_batch_helper(batch1, nFeatures=2, isSequence=False)
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, n_features=2, is_sequence=False)
         # print("DEBUG: reshape_class_2: batch1_reshape=", batch1_reshape, file=sys.stderr)
         assert batch1_reshape == ([[[111, 112, 113], [211, 212, 0], [311, 0, 0]], [[121, 0, 0, 0], [221, 222, 223, 224], [321, 322, 0, 0]]], [1, 2, 3])
-        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, nFeatures=2, isSequence=False)
+        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, n_features=2, is_sequence=False)
         # print("DEBUG: reshape_class_2: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
         ## NOTE: The numpy reshape returns floats for the classes, we should check if and when this is ok!
 
@@ -146,7 +146,7 @@ class Tests4Batches(unittest.TestCase):
             [[[311, 312], [321, 322]], [-31, -32]]
         ]
         # print("DEBUG: reshape_seq1: batch1=", batch1, file=sys.stderr)
-        batch1_reshape = Dataset.reshape_batch_helper(batch1, feature_types=["index", "index"], isSequence=True)
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, feature_types=["index", "index"], is_sequence=True)
         # print("DEBUG: reshape_seq1: batch1_reshape=", batch1_reshape, file=sys.stderr)
         assert batch1_reshape == ([[[111, 0, 0, 0], [211, 221, 231, 241],
                                     [311, 321, 0, 0]], [[112, 0, 0, 0], [212, 222, 232, 242], [312, 322, 0, 0]]],
