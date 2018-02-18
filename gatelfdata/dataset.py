@@ -8,7 +8,7 @@ import logging
 from .features import Features
 from .target import Target
 from .vocabs import Vocabs
-# import sys
+import sys
 
 
 class Dataset(object):
@@ -229,7 +229,7 @@ class Dataset(object):
         normalization is performed based on the mean/variance statistics for the feature. If it is set to None,
         no normalization is performed.
         [NOT YET: if normalize is set to "config" then normalization is performed as configured for the feature]"""
-        converted = self.features(indep)
+        converted = self.features(indep, normalize=normalize)
         if normalize:
             converted = self.normalize_features(converted, normalize=normalize)
         return converted
@@ -382,6 +382,9 @@ class Dataset(object):
             for line in inp:
                 valset.append(json.loads(line))
         if as_batch:
+            print("DEBUG: valset[0]dep is:", valset[0][1], file=sys.stderr)
+            print("DEBUG: len valset[0]indep is:", len(valset[0][0]), file=sys.stderr)
+            print("DEBUG: len valset[0]dep is:", len(valset[0][1]), file=sys.stderr)
             valset = self.reshape_batch(valset, as_numpy=as_numpy)
         return valset
 
@@ -514,6 +517,9 @@ class Dataset(object):
                 # indep is a list of feature vectors!
                 # the number of featue vectors must be equal to the number of targets
                 seq_len = len(indep)
+                print("DEBUG: indep_len/dep_len=%s/%s" % (len(indep), len(dep)), file=sys.stderr)
+                # print("DEBUG: dep is:", dep, file=sys.stderr)
+                # print("DEBUG: indep is:", indep, file=sys.stderr)
                 assert len(dep) == seq_len
                 seq_max_len = max(seq_len, seq_max_len)
                 # now we need to add a list to each of the features, each list is the

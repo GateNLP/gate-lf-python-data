@@ -49,7 +49,7 @@ class Features(object):
             logger.debug("Features: appending feature=%r", thefeature)
             self.features.append(thefeature)
 
-    def _convert_featurevec(self, valuelist, idxs=None):
+    def _convert_featurevec(self, valuelist, idxs=None, normalize=None):
         if not idxs and (len(valuelist) != len(self.features)):
             raise Exception("Wrong number of values passed, expected", len(self.features), "got", len(valuelist))
         if idxs and len(idxs) > len(valuelist):
@@ -63,7 +63,7 @@ class Features(object):
             features = self.features
         values = []
         for i in range(len(features)):
-            res = features[i](valuelist[i])
+            res = features[i](valuelist[i], normalize=normalize)
             values.append(res)
         return values
 
@@ -73,7 +73,24 @@ class Features(object):
     def __getitem__(self, item):
         return self.features[item]
 
-    def __call__(self, valuelist, idxs=None):
+    def __call__(self, valuelist, idxs=None, normalize=None):
+        # For a feature vector:
+        # this will go through each input and run it through the stored feature
+        # instance, and the values will get put into the result list and returned
+        # Note that for ngram attributes, the "value" to put into the list is itself a list
+        # (of embedding indices).
+        # For a sequence of feature vectors: each feature vector gets converted
+        # in the normal way, targets as well
+        if self.isSequence:
+            out_indep = []
+            for fv in valuelist:
+                out_indep.append(self._convert_featurevec(fv, idxs=idxs))
+            return out_indep
+        else:
+            values = self._convert_featurevec(valuelist, idxs=idxs)
+            return values
+
+    def __call__OLD(self, valuelist, idxs=None):
         # For a feature vector:
         # this will go through each input and run it through the stored feature
         # instance, and the values will get put into the result list and returned
