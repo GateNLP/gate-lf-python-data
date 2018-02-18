@@ -5,12 +5,12 @@ from . featureboolean import FeatureBoolean
 from . featurengram import FeatureNgram
 import logging
 
+
 class Feature(object):
     """Base class of all features. All information shared between some of the features is
     stored as class members of this base class."""
     def __init__(self, *args):
         raise Exception("Feature cannot be used for instances, use a type-specific class")
-
 
     @classmethod
     def make(cls, fname, datatype, attribute, featurestats):

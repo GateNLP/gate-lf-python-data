@@ -7,7 +7,6 @@ import logging
 
 class FeatureNominalEmbs(object):
 
-
     def __init__(self, fname, attrinfo, featurestats):
         """Create the instance from the given meta info of an input feature"""
         logger = logging.getLogger(__name__)

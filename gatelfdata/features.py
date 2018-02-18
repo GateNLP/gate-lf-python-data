@@ -33,7 +33,7 @@ class Features(object):
             dt = f["datatype"]
             attrnr = f["attrid"]
             attrinfo = attrs[attrnr]
-            attrcode = attrinfo.get("code")
+            # attrcode = attrinfo.get("code")
             if dt == "nominal":
                 Vocabs.setup_vocab(attrinfo, stats[f["name"]])
         Vocabs.finish()
@@ -41,7 +41,7 @@ class Features(object):
             dt = f["datatype"]
             attrnr = f["attrid"]
             fname = f["name"]
-            attrkind = f["kind"]
+            # attrkind = f["kind"]
             # get a bit more info from the corresponding attribute metadata
             attrinfo = attrs[attrnr]
             fstats = stats[fname]
@@ -57,7 +57,7 @@ class Features(object):
         if idxs and len(idxs) > len(self.features):
             raise Exception("Wrong number of idxs passed, got", len(idxs), "but got features:", len(self.features))
         if idxs:
-            valueslist = [valuelist[i] for i in idxs]
+            valuelist = [valuelist[i] for i in idxs]
             features = [self.features[i] for i in idxs]
         else:
             features = self.features
@@ -102,12 +102,12 @@ class Features(object):
         return len(self.features)
 
     def __repr__(self):
-        l = [f.__repr__() for f in self.features]
-        return "Features(features=%r)" % l
+        fl = [f.__repr__() for f in self.features]
+        return "Features(features=%r)" % fl
 
     def __str__(self):
-        l = [f.__str__() for f in self.features]
-        return "Features("+",".join(l)+")"
+        fl = [f.__str__() for f in self.features]
+        return "Features("+",".join(fl)+")"
 
     def pretty_print(self, file=sys.stdout):
         print("Features:", file=file)

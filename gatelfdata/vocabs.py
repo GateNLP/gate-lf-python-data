@@ -31,7 +31,7 @@ class Vocabs(object):
     @classmethod
     def finish(cls):
         """Once all the counts have been gathered, create the final instances"""
-        for id, vocab in cls.vocabs.items():
+        for _, vocab in cls.vocabs.items():
             vocab.finish()
 
     @classmethod

@@ -1,5 +1,5 @@
 from builtins import *
-from collections import Counter, OrderedDict, defaultdict
+from collections import Counter, defaultdict
 import logging
 import gzip
 import re
@@ -58,7 +58,7 @@ import sys
 class Vocab(object):
     """From the counter object, create string to id and id to string
     mappings."""
-    def __init__(self, counts=None, max_size=None, min_freq=1, add_symbols=[], emb_id=None, emb_file=None,
+    def __init__(self, counts=None, max_size=None, min_freq=1, add_symbols=None, emb_id=None, emb_file=None,
                  no_special_indices=False,
                  emb_train=None, emb_dims=0, pad_string="", oov_string="<<oov>>",
                  oov_vec_from="random", oov_vec_maxfreq=1):
@@ -76,6 +76,8 @@ class Vocab(object):
         or other special indices are added. In that case, trying to look up a symbol not in the vocabulary
         results in an exception.
         """
+        if not add_symbols:
+            add_symbols = []
         logger = logging.getLogger(__name__)
         if counts:
             self.freqs = Counter(counts)
@@ -111,7 +113,6 @@ class Vocab(object):
         if self.emb_file and self.emb_train == "onehot":
             raise Exception("Vocab emb_train 'onehot' not usable with embeddings file, "
                             "got emb_train=%s and emb_file=%s" % (self.emb_train, self.emb_file))
-
 
     # TODO: encapsulate the self.stoe access: once we use loading the memory mapped numpy array
     # as an alternative loading method, we will have two possible ways of how to get the embedding,
@@ -156,7 +157,7 @@ class Vocab(object):
                         if word in self.stoi:
                             self.stoe[word] = embs
                 # update the emb_dims setting
-                if len(self.stoe) > 0:
+                if embs and len(self.stoe) > 0:
                     self.emb_dims = len(embs)
         elif emb_file.endswith(".vocab") or emb_file.endswith(".npy"):
             raise Exception("TODO: format .vocab/.npy not yet implemented!")
@@ -190,7 +191,6 @@ class Vocab(object):
         else:
             return list(np.zeros(self.emb_dims))
 
-
     def add_counts(self, counts):
         """Incrementally add additional counts to the vocabulary. This can be done only before the finish
         method is called"""
@@ -199,8 +199,10 @@ class Vocab(object):
             raise Exception("Vocab method add_counts() cannot be called after finish()")
         self.freqs.update(counts)
 
-    def add_symbols(self, add_symbols=[]):
+    def add_symbols(self, add_symbols=None):
         """Incrementally add additional special symbols. By default, the vectors for these symbols will be random."""
+        if not add_symbols:
+            add_symbols = []
         if self.finished:
             raise Exception("Vocab method add_symbols() cannot be called after finish()")
         if self.no_special_indices:
@@ -228,10 +230,10 @@ class Vocab(object):
         self.min_freq = min_freq
 
     def set_max_size(self, max_size=None):
-        self.max_size=max_size
+        self.max_size = max_size
 
-    def set_emb_id(self, id):
-        self.emb_id = id
+    def set_emb_id(self, embid):
+        self.emb_id = embid
 
     def set_emb_file(self, file):
         self.emb_file = file
@@ -242,7 +244,6 @@ class Vocab(object):
     def finish(self):
         """Build the actual vocab instance, it can only be used properly to look-up things after calling
         this method, but no parameters can be changed nor counts added after this."""
-
 
         if not self.emb_train:
             raise Exception("Vocab emb_train parameter never set")
@@ -257,7 +258,6 @@ class Vocab(object):
         # 4) if we have mapping, add all embedding words left which are not in our vocab to our vocab
         # 5) we now know how big the matrix for the embeddings needs to be, create it and set the rows
         # 6) remove the dictionary stoe, we can do this using matrix[stoi] instead
-
 
         # got through the entries and put all the keys satisfying the min_freq limit into a list
         self.itos = [s for s in self.freqs if (self.freqs[s] >= self.min_freq)]
@@ -296,7 +296,7 @@ class Vocab(object):
             # go through all the entries in our vocabulary and check the frequency
             # if it is lower than oov_vec_maxfreq, try to get the embedding from the embedding file
             # if we got an embedding, add it to the sum and count, after going through all, calculate the mean
-            sum = self.zero_vec()
+            embsum = self.zero_vec()
             n = 0
             for s, f in self.freqs.items():
                 if f <= self.oov_vec_maxfreq:
@@ -304,9 +304,9 @@ class Vocab(object):
                     if emb:
                         # remember for removal
                         todelete.add(s)
-                        sum += emb
+                        embsum += emb
                         n += 1
-            self.oov_emb = sum / n
+            self.oov_emb = embsum / n
             self.stoe[self.oov_string] = self.oov_emb
         elif self.oov_vec_from == "random":
             self.oov_emb = self.rnd_vec(dims=self.emb_dims)
@@ -324,7 +324,7 @@ class Vocab(object):
 
         # remove the words we used for OOV from freqs and stoe
         # print("DEBUG: todelete1=", todelete, file=sys.stderr)
-        if len(todelete)> 0:
+        if len(todelete) > 0:
             have_deleted = True
         for s in todelete:
             del self.freqs[s]
@@ -385,7 +385,6 @@ class Vocab(object):
 
         self.finished = True
 
-
     def idx2string(self, idx):
         """Return the string for this index"""
         if not self.finished:
@@ -426,7 +425,7 @@ class Vocab(object):
             raise Exception("Vocab has not been finished!")
         # check if there is really just one 1.0 in the vector!
         # TODO
-        idx = vec.index(1.0)  ## TODO: this raises an exceptio if there is no 1.0
+        idx = vec.index(1.0)   # TODO: this raises an exceptio if there is no 1.0
         return self.itos[idx]
 
     def count(self, strng):

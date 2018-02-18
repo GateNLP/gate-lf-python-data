@@ -3,6 +3,7 @@
 # TODO: implement (optional?) scaling!
 # NOTE: automatic scaling is currently done in the Dataset class, should move here!!
 
+
 class FeatureNumeric(object):
 
     def __init__(self, fname, attrinfo, featurestats):

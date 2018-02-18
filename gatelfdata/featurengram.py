@@ -31,10 +31,11 @@ class FeatureNgram(object):
             ret = [self.vocab.string2idx(v) for v in value]
             return ret
         else:
-            raise Exception("Value for converting FeatureNgram not a list but {} of type {}".format(value,type(value)))
+            raise Exception("Value for converting FeatureNgram not a list but {} of type {}".format(value, type(value)))
 
     def __str__(self):
         return "FeatureNgram(name=%s)" % self.fname
 
     def __repr__(self):
         return "FeatureNgram(name=%r)" % self.fname
+
