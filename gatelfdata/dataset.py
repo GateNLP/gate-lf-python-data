@@ -485,7 +485,7 @@ class Dataset(object):
                 # indep is a list of feature vectors!
                 # the number of featue vectors must be equal to the number of targets
                 seq_len = len(indep)
-                print("DEBUG: indep_len/dep_len=%s/%s" % (len(indep), len(dep)), file=sys.stderr)
+                # print("DEBUG: indep_len/dep_len=%s/%s" % (len(indep), len(dep)), file=sys.stderr)
                 # print("DEBUG: dep is:", dep, file=sys.stderr)
                 # print("DEBUG: indep is:", indep, file=sys.stderr)
                 assert len(dep) == seq_len
