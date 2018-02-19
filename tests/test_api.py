@@ -289,18 +289,37 @@ class Tests4Dataset1test1(unittest.TestCase):
         # features and one of 17 different targets
         # so we should convert this into 18 features which each now should have 3 values
         # and 3 onehot vectors for the class
-        assert len(indep) == 18
+
         assert len(dep) == 3
+        assert len(indep) == 3   # 3 elements in the sequence
+        assert len(indep[0]) == 18
+        assert len(indep[1]) == 18
+        assert len(indep[2]) == 18
         # check if the class is actually ADJ for all three targets
         dep1 = dep[0]
         dep2 = dep[1]
         dep3 = dep[2]
-        t11 =  ds.target.vocab.idx2string(dep1)
+        t11 = ds.target.vocab.idx2string(dep1)
         assert t11 == "ADJ"
         t12 = ds.target.vocab.idx2string(dep2)
         assert t12 == "ADJ"
         t13 = ds.target.vocab.idx2string(dep3)
         assert t13 == "ADJ"
+        # test getting batches in non-reshaped form
+        bit1 = ds.batches_converted(train=False, convert=True, batch_size=2, reshape=False)
+        biter1 = iter(bit1)
+        batch1 = next(biter1)
+        # print("DEBUG: TESTFILE4 batch/noreshape=%s" % (batch1,), file=sys.stderr)
+        assert len(batch1) == 2
+        # test getting batches in reshaped form
+        bit2 = ds.batches_converted(train=False, convert=True, batch_size=2, reshape=True)
+        biter2 = iter(bit2)
+        batch2 = next(biter2)
+        # print("DEBUG: TESTFILE4 batch/noreshape=%s" % (batch1,), file=sys.stderr)
+        bindep, bdep = batch2
+        assert len(bindep) == 18
+        assert len(bdep) == 2
+        assert len(bindep[0]) == 2
 
     def test_t6(self):
         logger.info("Running Tests4Dataset1test1/test_t6")

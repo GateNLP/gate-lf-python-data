@@ -350,9 +350,9 @@ class Dataset(object):
             for line in inp:
                 valset.append(json.loads(line))
         if as_batch:
-            print("DEBUG: valset[0]dep is:", valset[0][1], file=sys.stderr)
-            print("DEBUG: len valset[0]indep is:", len(valset[0][0]), file=sys.stderr)
-            print("DEBUG: len valset[0]dep is:", len(valset[0][1]), file=sys.stderr)
+            # print("DEBUG: valset[0]dep is:", valset[0][1], file=sys.stderr)
+            # print("DEBUG: len valset[0]indep is:", len(valset[0][0]), file=sys.stderr)
+            # print("DEBUG: len valset[0]dep is:", len(valset[0][1]), file=sys.stderr)
             valset = self.reshape_batch(valset, as_numpy=as_numpy)
         return valset
 

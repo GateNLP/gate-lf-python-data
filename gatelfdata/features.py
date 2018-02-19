@@ -81,6 +81,8 @@ class Features(object):
         # (of embedding indices).
         # For a sequence of feature vectors: each feature vector gets converted
         # in the normal way, targets as well
+        # NOTE: not sure yet how to handle nominals that are onehot encoded! In some cases
+        # we want to instances in some we want the vectors .. see featurenominal1ofk
         if self.isSequence:
             out_indep = []
             for fv in valuelist:
