@@ -22,9 +22,11 @@ class FeatureNominalEmbs(object):
     def type_converted(self):
         return "index"
 
-    def __call__(self, value):
+    def __call__(self, value, normalize=None):
         """Convert a value of the expected type for this feature to a value that can be
         fed into the corresponding input unit of the network"""
+        if normalize:
+            raise Exception("Normalization does not make sense for ngram features")
         return self.vocab.string2idx(value)
 
     def __str__(self):

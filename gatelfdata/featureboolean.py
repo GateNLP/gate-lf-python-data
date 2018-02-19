@@ -25,8 +25,10 @@ class FeatureBoolean(object):
         else:
             return float(0.0)
 
-    def __call__(self,valueorlist):
+    def __call__(self, valueorlist, normalize=None):
         """Converts True to float(1.0) and False to float(0.0)"""
+        if normalize:
+            raise Exception("Normalization not supported for boolean features")
         if type(valueorlist) == list:
             return [FeatureBoolean.bool2float(x) for x in valueorlist]
         else:

@@ -20,10 +20,11 @@ class FeatureNgram(object):
     def type_original(self):
         return "ngram"
 
-    def __call__(self, value):
+    def __call__(self, value, normalize=None):
         """Convert a value of the expected type for this feature to a value that can be
         fed into the corresponding input unit of the network"""
-
+        if normalize:
+            raise Exception("Normalization does not make sense for ngram features")
         # ok, for an ngram we expect the value to be a list, in which case we
         # create a new list with the string idices of the values
         # otherwise, we report an error

@@ -42,6 +42,23 @@ class TestUtils(unittest.TestCase):
         Dataset.pad_matrix_(l2, pad_value=0)
         assert l2 == [[1, 2, 0, 0], [0, 0, 0, 0], [1, 2, 3, 4], [1, 0, 0, 0], [2, 3, 0, 0]]
 
+
+class TestFeatures1(unittest.TestCase):
+    
+    def test_features1_scaling1(self):
+        ds = Dataset(TESTFILE1)
+        feature3 = ds.features[3]
+        val = feature3(0.5)
+        assert val == 0.5
+        # print("DEBUG: none / val for 0.5=%s" % val, file=sys.stderr)
+        val = feature3(0.5, normalize="minmax")
+        assert val == 0.75
+        # print("DEBUG: minmax / val for 0.5=%s" % val, file=sys.stderr)
+        val = feature3(0.5, normalize="meanvar")
+        assert val > 2.3381 and val < 2.3382
+        # print("DEBUG: meanvar / val for 0.5=%s" % val, file=sys.stderr)
+
+
 class TestVocab1(unittest.TestCase):
 
     def test_vocab1(self):
@@ -152,10 +169,10 @@ class Tests4Batches(unittest.TestCase):
                                     [311, 321, 0, 0]], [[112, 0, 0, 0], [212, 222, 232, 242], [312, 322, 0, 0]]],
                                   [[-11, 0, 0, 0], [-21, -22, -23, -23], [-31, -32, 0, 0]])
 
-class Tests4Features1test1(unittest.TestCase):
+class Tests4Dataset1test1(unittest.TestCase):
 
     def test_t1(self):
-        logger.info("Running Tests4Features1test1/test_t1")
+        logger.info("Running Tests4Dataset1test1/test_t1")
         ds = Dataset(TESTFILE1)
         metafile = ds.metafile
         # print("debug: metafile=", metafile, file=sys.stderr)
@@ -163,7 +180,7 @@ class Tests4Features1test1(unittest.TestCase):
 
 
     def test_t1_1(self):
-        logger.info("Running Tests4Features1test1/test_t1_1")
+        logger.info("Running Tests4Dataset1test1/test_t1_1")
         # test overriding the meta settings: override the "token" embeddings to have emb_dims=123
         # and emb_train=mapping and an emb_file
         ds = Dataset(TESTFILE3, override_meta_embs={"emb_id": "token", "emb_dims": 123, "emb_train": "yes"})
@@ -178,7 +195,7 @@ class Tests4Features1test1(unittest.TestCase):
 
 
     def test_t2(self):
-        logger.info("Running Tests4Features1test1/test_t2")
+        logger.info("Running Tests4Dataset1test1/test_t2")
         ds = Dataset(TESTFILE1)
         features = Features(ds.meta)
         s = features.size()
@@ -200,7 +217,7 @@ class Tests4Features1test1(unittest.TestCase):
         # assert len(dep) == 2
 
     def test_t3(self):
-        logger.info("Running Tests4Features1test1/test_t3")
+        logger.info("Running Tests4Dataset1test1/test_t3")
         ds = Dataset(TESTFILE2)
 
         it0 = iter(ds.instances_original())
@@ -237,7 +254,7 @@ class Tests4Features1test1(unittest.TestCase):
         # assert len(dep1_it) == 2
 
     def test_t4(self):
-        logger.info("Running Tests4Features1test1/test_t4")
+        logger.info("Running Tests4Dataset1test1/test_t4")
         ds = Dataset(TESTFILE3)
         logger.info("TESTFILE3 attrs=%r", ds.meta.get("featureInfo").get("attributes"))
         # Features constructor finishes the vocab, so we need to re-initilize
@@ -259,7 +276,7 @@ class Tests4Features1test1(unittest.TestCase):
         # assert len(dep) == 2
 
     def test_t5(self):
-        logger.info("Running Tests4Features1test1/test_t5")
+        logger.info("Running Tests4Dataset1test1/test_t5")
         ds = Dataset(TESTFILE4)
         it1 = iter(ds.instances_converted(train=False, convert=True))
         rec = next(it1)
@@ -286,7 +303,7 @@ class Tests4Features1test1(unittest.TestCase):
         assert t13 == "ADJ"
 
     def test_t6(self):
-        logger.info("Running Tests4Features1test1/test_t6")
+        logger.info("Running Tests4Dataset1test1/test_t6")
         ds = Dataset(TESTFILE2)
         ds.split(convert=True, keep_orig=True, validation_size=3, random_seed=1)
         # check if getting the batches and validation sets works
@@ -349,7 +366,7 @@ class Tests4Features1test1(unittest.TestCase):
                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     def test_t7(self):
-        logger.info("Running Tests4Features1test1/test_t7")
+        logger.info("Running Tests4Dataset1test1/test_t7")
         ds = Dataset(TESTFILE3)
         ds.split(convert=True, keep_orig=True, validation_size=3, random_seed=1)
         # check if getting the batches and validation sets works
@@ -409,7 +426,7 @@ class Tests4Features1test1(unittest.TestCase):
         assert feature1[1] == 1211
 
     def test_t8(self):
-        logger.info("Running Tests4Features1test1/test_t8")
+        logger.info("Running Tests4Dataset1test1/test_t8")
         ds = Dataset(TESTFILE3, reuse_files=True)
         # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
         num_idxs = ds.get_float_feature_idxs()

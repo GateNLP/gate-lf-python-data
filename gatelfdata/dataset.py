@@ -191,48 +191,16 @@ class Dataset(object):
                 whichfile = self.orig_data_file
         return StringIterable(whichfile)
 
-    def normalize_features(self, indep, normalize="meanvar"):
-        """This normalizes the converted features (indep) according to the giving normalization strategy.
-        The features must correspond to the features described in the meta data, i.e. the indep parameter
-        has to contain the exact independent part of an instance."""
-        assert len(indep) == len(self.meta["features"])
-        # NOTE: this simply delegates the normalizing to each feature instance
-        # TODO: We may also want to be able to support squashing functions and similar here.
-        if normalize == "meanvar":
-            for i in range(len(self.meta["features"])):
-                if self.meta["features"][i]["datatype"] == "numeric":
-                    # normalize it based on the feature stats
-                    fname = self.meta["features"][i]["name"]
-                    mean = self.meta["featureStats"][fname]["mean"]
-                    var = self.meta["featureStats"][fname]["variance"]
-                    # if var is > larger than 0.0 then do normalization by mapping the mean to 0
-                    # and normalizing the variance to 1.0
-                    if var > 0.0:
-                        val = indep[i]
-                        val = (val - mean)/var
-                        indep[i] = val
-        return indep
-
-    def convert_feature(self, value, featureindex, normalize=None):
-        """TODO Convert a value or a batch of values for feature with index featureindex and normalize."""
-        # TODO!!!
-        pass
-
-    def convert_feature2(self, value, idxs, normalize=None):
-        """TODO Convert a list or array of features with the given feature indices"""
-        # TODO!!!
-        pass
 
     def convert_indep(self, indep, normalize=None):
         """Convert the independent part of an original representation into the converted representation
-        where strings are replaced by word indices or one hot vectors. If normalize is set to "meanvar", then
-        normalization is performed based on the mean/variance statistics for the feature. If it is set to None,
-        no normalization is performed.
-        [NOT YET: if normalize is set to "config" then normalization is performed as configured for the feature]"""
-        converted = self.features(indep, normalize=normalize)
-        if normalize:
-            converted = self.normalize_features(converted, normalize=normalize)
-        return converted
+        where strings are replaced by word indices or one hot vectors.
+        If normalize is None then the normalization will be performed according to the default
+        for the feature, otherwise it should be one of "minmax", "meanvar", or False or a normalizing function.
+        If False, normalization is turned off explicitly, otherwise the normalization function is used.
+        This parameter is ignored for all features which are not numeric.
+        """
+        return self.features(indep, normalize=normalize)
 
     def convert_dep(self, dep, is_batch=False, as_onehot=False):
         """Convert the dependent part of an original representation into the converted representation
