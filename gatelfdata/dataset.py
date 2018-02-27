@@ -404,7 +404,8 @@ class Dataset(object):
     @staticmethod
     def pad_list_(thelist, tosize, pad_left=False, pad_value=None):
         """Pads the list to have size elements, inserting the pad_value as needed,
-        left or right depending on pad_left. CAUTION! Modifies thelist and also returns it"""
+        left or right depending on pad_left. CAUTION! Modifies thelist and also returns it.
+        """
         n_needed = tosize - len(thelist)
         if n_needed <= 0:
             return thelist
@@ -427,7 +428,7 @@ class Dataset(object):
 
     @staticmethod
     def reshape_batch_helper(instances, as_numpy=False, pad_left=False, from_original=False, pad=True,
-                             n_features=None, is_sequence=None, feature_types=None):
+                             n_features=None, is_sequence=None, feature_types=None, target=None):
         """Reshapes a list of instances where each instance is a two-element list of an independent and dependent/target
         part into a tuple where the first part is a list of features and the second part is the list of targets.
         If the instances are not for sequence tagging, then each list that corresponds to a feature contains as many
@@ -503,11 +504,15 @@ class Dataset(object):
                 out_dep.append(dep)
             # we now have all the features and targets, need to pad all of those to the maximum sequence length
             # NOTE: currently the targets for sequence tagging are always nominal, so padding is done with
-            # '' for original and 0 otherwise
+            # '' for original and 0 otherwise. The exception is if the target gets represented as a one hot
+            # vector, in which case the appropriate zero-vector needs to get used instead
             if from_original:
                 pad_value = ''
             else:
-                pad_value = 0
+                if target and target.as_onehot:
+                    pad_value = target.zero_onehotvec()
+                else:
+                    pad_value = 0
             if pad:
                 Dataset.pad_matrix_(out_dep, tosize=seq_max_len, pad_left=pad_left, pad_value=pad_value)
             # to pad the features, we need to know the type of the feature and if we have original format:
@@ -572,7 +577,8 @@ class Dataset(object):
         return Dataset.reshape_batch_helper(instances, as_numpy=as_numpy, pad_left=pad_left,
                                             from_original=from_original, pad=pad,
                                             feature_types=feature_types,
-                                            is_sequence=self.isSequence)
+                                            is_sequence=self.isSequence,
+                                            target=self.target)
 
     def batches_original(self, train=True, file=None, reshape=True, batch_size=100, pad_left=False, as_numpy=False):
         """Return a batch of instances in original format for training.

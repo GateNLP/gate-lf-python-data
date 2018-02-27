@@ -490,6 +490,33 @@ class Tests4Dataset1test1(unittest.TestCase):
         ngr_idxs = ds.get_indexlist_feature_idxs()
         print("DEBUG indexlist_idxs=", ngr_idxs, file=sys.stderr)
 
+    def test_t9(self):
+        logger.info("Running Tests4Dataset1test1/test_t9")
+        ds1 = Dataset(TESTFILE4, reuse_files=True)
+        ds1.target.set_as_onehot(True)
+        batch_reshape = ds1.batches_converted(train=False, batch_size=4, reshape=True, convert=True)
+        b1r = next(iter(batch_reshape))
+        targets = b1r[1]
+        indeps = b1r[0]
+        # ok, we want one element for each example in the batch
+        assert len(targets) == 4
+        # get the length of the first sequence from indep by looking at the number of elements
+        # of the first feature of the first instance. Note that all sequences of feature values
+        # and targets should be padded to the maximum sequence length!
+        feature1 = indeps[0]
+        len1 = len(feature1[0])
+        # check the length of the target sequences
+        assert len(targets[0]) == len1
+        assert len(targets[1]) == len1
+        assert len(targets[2]) == len1
+        assert len(targets[3]) == len1
+        # for each target check that all entries are one-hot vectors of the same length
+        for i in range(4):
+            for j in range(len1):
+                val = targets[i][j]
+                assert isinstance(val, list)
+                assert len(val) == 17
+
 
 if __name__ == '__main__':
     unittest.main()

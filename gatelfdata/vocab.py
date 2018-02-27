@@ -420,6 +420,9 @@ class Vocab(object):
             vec[self.stoi[thestring]] = 1.0
         return vec
 
+    def zero_onehotvec(self):
+        return [0.0] * len(self.itos)
+
     def onehot2string(self, vec):
         if not self.finished:
             raise Exception("Vocab has not been finished!")

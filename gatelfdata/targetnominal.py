@@ -26,6 +26,10 @@ class TargetNominal(object):
         string index, otherwise, to the corresponding onehot vector."""
         self.as_onehot = flag
 
+    def zero_onehotvec(self):
+        """Returns a zero vector with as many 0 as the one-hot representation would have."""
+        return self.vocab.zero_onehotvec()
+
     def __call__(self, value, as_onehot=False):
         as_onehot = self.as_onehot or as_onehot
         if self.isSequence:
