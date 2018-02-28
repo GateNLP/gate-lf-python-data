@@ -6,9 +6,17 @@ __pycache__/
 # idea
 /.idea/workspace.xml
 /.idea/tasks.xml
+/.idea/dictionaries
 
 # C extensions
 *.so
+
+/doc-sphinx
+/doc-html
+/embeddings
+
+/tests/data/*converted*.json
+/tests/data/*orig*.json
 
 # Distribution / packaging
 .Python
