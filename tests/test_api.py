@@ -133,7 +133,21 @@ class Tests4Batches(unittest.TestCase):
         assert batch1_reshape == ([[11, 21, 31], [12, 22, 32]], [1, 2, 3])
         batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, n_features=2, is_sequence=False)
         # print("DEBUG: reshape_class_1: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
-        ## NOTE: The numpy reshape returns floats for the classes, we should check if and when this is ok!
+        ## NOTE: The numpy reshape returns floats for the classes, we should check if and when this is ok
+
+    def test_reshape_class1a(self):
+        # 3 instances, each having 2 features, this time indep only
+        batch1 = [
+            [11, 12],
+            [21, 22],
+            [31, 32],
+        ]
+        batch1_reshape = Dataset.reshape_batch_helper(batch1, n_features=2, is_sequence=False, indep_only=True)
+        # print("DEBUG: reshape_class_1a: batch1_reshape=", batch1_reshape, file=sys.stderr)
+        assert batch1_reshape == [[11, 21, 31], [12, 22, 32]]
+        batch1_reshape_np = Dataset.reshape_batch_helper(batch1, as_numpy=True, n_features=2, is_sequence=False, indep_only=True)
+        # print("DEBUG: reshape_class_1: batch1_reshape_np=%r" % (batch1_reshape_np,), file=sys.stderr)
+
 
     def test_reshape_class2(self):
         # 3 instances, each having 2 features, both features are sequences

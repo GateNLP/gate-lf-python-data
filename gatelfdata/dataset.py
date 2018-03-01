@@ -428,7 +428,8 @@ class Dataset(object):
 
     @staticmethod
     def reshape_batch_helper(instances, as_numpy=False, pad_left=False, from_original=False, pad=True,
-                             n_features=None, is_sequence=None, feature_types=None, target=None):
+                             n_features=None, is_sequence=None, feature_types=None, target=None,
+                             indep_only=False):
         """Reshapes a list of instances where each instance is a two-element list of an independent and dependent/target
         part into a tuple where the first part is a list of features and the second part is the list of targets.
         If the instances are not for sequence tagging, then each list that corresponds to a feature contains as many
@@ -436,7 +437,8 @@ class Dataset(object):
         For sequence tagging, The independent part contains as many lists as there are features, each of these
         lists contains as many elements as there are instances. These elements in turn are lists, representing the
         values of the feature for each feature vector in the sequence for the instance.
-        The feature_types list must be specified if is_sequence is True, in that case, n_features is not needed."""
+        The feature_types list must be specified if is_sequence is True, in that case, n_features is not needed.
+        If indep_only is True, this will not expect targets and only reshape the independent features."""
 
         if feature_types:
             n_features = len(feature_types)
@@ -453,13 +455,17 @@ class Dataset(object):
         if not is_sequence:
             flist_max_len = [0 for _ in range(n_features)]
             for instance in instances:
-                (indep, dep) = instance
+                if indep_only:
+                    indep = instance
+                else:
+                    (indep, dep) = instance
                 assert len(indep) == n_features
                 for i in range(n_features):
                     out_indep[i].append(indep[i])
                     if isinstance(indep[i], list):
                         flist_max_len[i] = max(flist_max_len[i], len(indep[i]))
-                out_dep.append(dep)
+                if not indep_only:
+                    out_dep.append(dep)
             # now that we have all the lists of feature values, if the values are themself lists, pad them:
             # Here it is easy to find the pad_value: since we can only have ngrams as the reason for list values,
             # we use a "" for the original and 0 for converted
@@ -471,7 +477,8 @@ class Dataset(object):
                 if flist_max_len[i] > 0 and pad:
                     Dataset.pad_matrix_(out_indep[i], tosize=flist_max_len[i], pad_left=pad_left, pad_value=pad_value)
             if as_numpy:
-                out_dep = np.array(out_dep)
+                if not indep_only:
+                    out_dep = np.array(out_dep)
                 for i in range(n_features):
                     out_indep[i] = np.array(out_indep[i])
         else:  # is_sequence is True
@@ -482,7 +489,10 @@ class Dataset(object):
             # for the final output, we need to pad all the features to the length of the longest sequence
             seq_max_len = 0
             for instance in instances:
-                (indep, dep) = instance
+                if indep_only:
+                    indep = instance
+                else:
+                    (indep, dep) = instance
                 # indep is a list of feature vectors!
                 # the number of featue vectors must be equal to the number of targets
                 seq_len = len(indep)
@@ -501,20 +511,22 @@ class Dataset(object):
                             raise Exception("Sequences/ngrams within sequences of feature vectors not supported")
                         values.append(val)
                     out_indep[feature_idx].append(values)
-                out_dep.append(dep)
+                if not indep_only:
+                    out_dep.append(dep)
             # we now have all the features and targets, need to pad all of those to the maximum sequence length
             # NOTE: currently the targets for sequence tagging are always nominal, so padding is done with
             # '' for original and 0 otherwise. The exception is if the target gets represented as a one hot
             # vector, in which case the appropriate zero-vector needs to get used instead
-            if from_original:
-                pad_value = ''
-            else:
-                if target and target.as_onehot:
-                    pad_value = target.zero_onehotvec()
+            if not indep_only:
+                if from_original:
+                    pad_value = ''
                 else:
-                    pad_value = 0
-            if pad:
-                Dataset.pad_matrix_(out_dep, tosize=seq_max_len, pad_left=pad_left, pad_value=pad_value)
+                    if target and target.as_onehot:
+                        pad_value = target.zero_onehotvec()
+                    else:
+                        pad_value = 0
+                if pad:
+                    Dataset.pad_matrix_(out_dep, tosize=seq_max_len, pad_left=pad_left, pad_value=pad_value)
             # to pad the features, we need to know the type of the feature and if we have original format:
             # For original:
             # "nominal" - ""
@@ -545,7 +557,8 @@ class Dataset(object):
                 if pad:
                     Dataset.pad_matrix_(f, seq_max_len, pad_left=pad_left, pad_value=pad_value)
             if as_numpy:
-                out_dep = np.array(out_dep)
+                if not indep_only:
+                    out_dep = np.array(out_dep)
                 for i in range(n_features):
                     out_indep[i] = np.array(out_indep[i])
 
@@ -559,7 +572,10 @@ class Dataset(object):
             for i in range(n_features):
                 tmp[i] = out_indep[i]
             out_indep = tmp
-        ret = (out_indep, out_dep)
+        if not indep_only:
+            ret = (out_indep, out_dep)
+        else:
+            ret = out_indep
         return ret
 
     def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False, pad=True):
