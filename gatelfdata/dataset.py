@@ -578,7 +578,7 @@ class Dataset(object):
             ret = out_indep
         return ret
 
-    def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False, pad=True):
+    def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False, pad=True, indep_only=False):
         """Reshape the list of converted instances into what is expected for training on a batch.
         TODO: currently this only works properly for non-sequence instances: sequence instances need to get padded!
         NOTE: for non-sequence instances, we pad all list-typed features to the maximum length. If from_original
@@ -594,6 +594,7 @@ class Dataset(object):
                                             from_original=from_original, pad=pad,
                                             feature_types=feature_types,
                                             is_sequence=self.isSequence,
+                                            indep_only=indep_only,
                                             target=self.target)
 
     def batches_original(self, train=True, file=None, reshape=True, batch_size=100, pad_left=False, as_numpy=False):
