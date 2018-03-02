@@ -234,7 +234,7 @@ class Dataset(object):
         return [indep_converted, dep_converted]
 
     def split(self, outdir=None, validation_size=None, validation_part=0.1, random_seed=1,
-              convert=False, keep_orig=False):
+              convert=False, keep_orig=False, reuse_files=False):
         """This splits the original file into an actual training file and a validation set file.
         This creates two new files in the same location as the original files, with the "data"/"meta"
         parts of the name replaced with "val" for validation and "train" for training. If converted is
@@ -244,7 +244,10 @@ class Dataset(object):
         format files are created, subsequent calls to the batches_converted or batches_orig can be made.
         If outdir is specified, the files will get stored in that directory instead of the directory
         where the meta/data files are stored.
-        If random_seed is set to 0 or None, the random seed generator does not get initialized."""
+        If random_seed is set to 0 or None, the random seed generator does not get initialized.
+        If reuse_files is True and the files that would have been created are already there
+        the method does nothing for that file, assuming, but not checking that the contents is correct.
+        """
         logger = logging.getLogger(__name__)
         valindices = set()
         if validation_size or validation_part:
@@ -277,20 +280,27 @@ class Dataset(object):
         outconvval = None
         if not convert or (convert and keep_orig):
             self.have_orig_split = True
-            outorigtrain = open(origtrainfile, "w", encoding="utf-8")
+            if not (reuse_files and os.path.exists(origtrainfile)):
+                outorigtrain = open(origtrainfile, "w", encoding="utf-8")
             self.orig_train_file = origtrainfile
-            outorigval = open(origvalfile, "w", encoding="utf-8")
+            if not (reuse_files and os.path.exists(origvalfile)):
+                outorigval = open(origvalfile, "w", encoding="utf-8")
             self.orig_val_file = origvalfile
         if convert:
             self.have_conv_split = True
-            outconvtrain = open(convtrainfile, "w", encoding="utf-8")
+            if not (reuse_files and os.path.exists(convtrainfile)):
+                outconvtrain = open(convtrainfile, "w", encoding="utf-8")
             self.converted_train_file = convtrainfile
-            outconvval = open(convvalfile, "w", encoding="utf-8")
+            if not (reuse_files and os.path.exists(convvalfile)):
+                outconvval = open(convvalfile, "w", encoding="utf-8")
             self.converted_val_file = convvalfile
         # print("DEBUG origtrain/origval/convtrain/convval=%s/%s/%s/%s" % (outorigtrain, outorigval,
         # outconvtrain, outconvval), file=sys.stderr)
         self.outdir = outdir
         i = 0
+        # if we already have everything from a previous run, do nothing
+        if not outorigtrain and not outorigval and not outconvval and not outconvtrain:
+            return
         for line in self.instances_as_string():
             if convert:
                 converted = self.convert_instance(line)

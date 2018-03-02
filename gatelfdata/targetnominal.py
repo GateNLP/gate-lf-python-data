@@ -44,6 +44,9 @@ class TargetNominal(object):
             else:
                 return self.vocab.string2idx(value)
 
+    def idx2label(self, idx):
+        return self.vocab.idx2string(idx)
+
     def __str__(self):
         return "TargetNominal()"
 
