@@ -25,8 +25,12 @@ TESTFILE1 = os.path.join(DATADIR, "class-ionosphere.meta.json")
 TESTFILE2 = os.path.join(DATADIR, "class-ngram-sp1.meta.json")
 TESTFILE3 = os.path.join(DATADIR, "class-window-pos1.meta.json")
 TESTFILE4 = os.path.join(DATADIR, "seq-pos1.meta.json")
+TESTFILE5 = os.path.join(DATADIR, "seq-pos2.meta.json")
 EMBFILE20_50TXT = os.path.join(DATADIR, "emb-mini20-25.txt")
 EMBFILE20_50GZ = os.path.join(DATADIR, "emb-mini20-25.txt.gz")
+
+
+# class Test4Debugging(unittest.TestCase):
 
 
 class TestUtils(unittest.TestCase):
@@ -44,7 +48,7 @@ class TestUtils(unittest.TestCase):
 
 
 class TestFeatures1(unittest.TestCase):
-    
+
     def test_features1_scaling1(self):
         ds = Dataset(TESTFILE1)
         feature3 = ds.features[3]
@@ -206,7 +210,13 @@ class Tests4Dataset1test1(unittest.TestCase):
         assert vocf1.emb_id == "token"
         assert vocf1.emb_dims == 123
 
-
+    def test_t1_2(selfs):
+        logger.info("Running Tests4Dataset1test1/test_t1_2")
+        # check a simple sequence dataset with just one nominal feature without any embeddings definitions
+        ds = Dataset(TESTFILE5)
+        feats = ds.features
+        vocf1 = feats[0].vocab
+        print("Vocab for feature 1 is ", vocf1, file=sys.stderr)
 
     def test_t2(self):
         logger.info("Running Tests4Dataset1test1/test_t2")

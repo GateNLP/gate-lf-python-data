@@ -5,6 +5,7 @@ import gzip
 import re
 import numpy as np
 import sys
+import math
 
 # OK, the protocol for using this is this:
 # * create a preliminary instance using "Vocab(...)"
@@ -245,8 +246,16 @@ class Vocab(object):
         """Build the actual vocab instance, it can only be used properly to look-up things after calling
         this method, but no parameters can be changed nor counts added after this."""
 
+        # if the emb_train parameter was never set, try to come up with a sensible default here:
+        # - if a file is specified, use the setting "no" for now,
+        # - otherwise use "yes"
         if not self.emb_train:
-            raise Exception("Vocab emb_train parameter never set")
+            if self.emb_file:
+                self.emb_train = "no"
+            else:
+                self.emb_train = "yes"
+
+        # print("DEBUG: finishing vocab for ", self.emb_id, file=sys.stderr)
 
         # Course of action:
         # 1) If words get removed from our own vocab because of frequency or max size, this
@@ -275,6 +284,15 @@ class Vocab(object):
         for i, s in enumerate(self.itos):
             self.stoi[s] = i
         self.n = len(self.itos)
+
+        if not self.emb_file and not self.emb_dims:
+            # caclulate some embeddings dimensions automatically from the number of words
+            # for only a few words, we essentially want as many dimensions as there are words and
+            # for a huge number we want somewhere in the 100s.
+            # TODO: figure out something reasonable, for now implement something simple
+            # this is 3 for 10, 10 for 100, 31 for 1000, 100 for 10k and 316 for 100k
+            self.emb_dims = int(math.sqrt(self.n+2))
+
 
         # figure out if we need all embeddings, otherwise only load the ones corresponding to the words we have
         if self.emb_train == "mapping":
@@ -384,6 +402,7 @@ class Vocab(object):
         # self.freqs = None
 
         self.finished = True
+        # print("DEBUG: just created vocab: ", self, file=sys.stderr)
 
     def idx2string(self, idx):
         """Return the string for this index"""
@@ -441,7 +460,7 @@ class Vocab(object):
             return 0
 
     def __str__(self):
-        return "Vocab()"
+        return self.__repr__()+":nentries=%d" % len(self.stoi)
 
     def __repr__(self):
-        return "Vocab(emb_id=%r)" % self.emb_id
+        return "Vocab(emb_id=%r,emb_train=%r,emb_file=%r,emb_dims=%d)" % (self.emb_id, self.emb_train, self.emb_file, self.emb_dims)
