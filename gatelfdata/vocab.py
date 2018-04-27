@@ -291,7 +291,9 @@ class Vocab(object):
             # for a huge number we want somewhere in the 100s.
             # TODO: figure out something reasonable, for now implement something simple
             # this is 3 for 10, 10 for 100, 31 for 1000, 100 for 10k and 316 for 100k
-            self.emb_dims = int(math.sqrt(self.n+2))
+            # TODO: decide on how to calculate the default dimension!
+            # self.emb_dims = int(math.sqrt(self.n+2))
+            self.emb_dims = int(math.log2(self.n)i**1.5)+1
 
 
         # figure out if we need all embeddings, otherwise only load the ones corresponding to the words we have
