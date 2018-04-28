@@ -48,7 +48,7 @@ class Dataset(object):
         with open(metafile, "rt", encoding="utf-8") as inp:
             return json.load(inp)
 
-    def __init__(self, metafile, reuse_files=False, override_meta_embs=None):
+    def __init__(self, metafile, reuse_files=False, config=None):
         """Creating an instance will read the metadata and create the converters for
         converting the instances from the original data format (which contains the original
         values and strings) to a converted representation where strings are replaced by
@@ -56,27 +56,40 @@ class Dataset(object):
         If reuse_files is True, then any files found that look like training or validation files
         in the same directory are re-used, otherwise the split or convert_to_file methods
         must be run to re-create them before they can be used.
-        The override_meta_embs parameter takes a dictionary or list of dictionaries with
-        key/value pairs to override an embedding setting, with the key "emb_id" required
-        and at least one of these keys: emb_dims, emb_file, emb_train to override the
-        corresponding meta setting. If an emb_id is used that does not occur in meta,
-        it is ignored.
+        The config parameter is expected to be a map with config settings. These settings
+        override all other settings with highest priority. Currently the config parameter
+        can only take the following settings:
+        * embs=id:dims:train:minfreq,id:dims:drain:minfreq - a list of settings each for some id,
+        specifying the dimensions, train mode, and minimum frequency.
         """
         logger = logging.getLogger(__name__)
+        self.config = config
+        print("DEBUG creating dataset from ",metafile,"config is",config,file=sys.stderr)
         Vocabs.init()
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)
         # override meta settings for the embeddings
-        if override_meta_embs:
-            if not isinstance(override_meta_embs, list):
-                override_meta_embs = [override_meta_embs]
+        if config and "embs" in config and config["embs"] is not None:
+            embs = config["embs"]
+            embs_settings = embs.split(",")
             sdict = {}
-            for setting in override_meta_embs:
-                sdict[setting["emb_id"]] = setting
+            for setting in embs_settings:
+                if ":" not in setting:
+                    raise Exception("No colon in emb-setting, should be of the form id:dim:train:minfrequ %s" % (setting, ))
+                (embid, embdims, embtrain, embminfreq) = (setting.split(":") + [""]*3)[:4]
+                tmpsetting = {}
+                if embdims:
+                    tmpsetting["emb_dims"] = int(embdims)
+                if embtrain:
+                    tmpsetting["emb_train"] = embtrain
+                if embminfreq:
+                    tmpsetting["emb_minfreq"] = int(embminfreq)
+                tmpsetting["emb_id"] = embid
+                sdict[embid]=tmpsetting
             for attrinfo in self.meta.get("featureInfo").get("attributes"):
-                eid = attrinfo.get("emb_id")
-                if eid:
-                    osetting = sdict.get(eid)
+                attr_eid = attrinfo.get("emb_id")
+                if attr_eid is not None:
+                    osetting = sdict.get(attr_eid)
                     if osetting:
                         for k, v in osetting.items():
                             if k.startswith("emb_"):
