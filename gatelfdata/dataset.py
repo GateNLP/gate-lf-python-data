@@ -64,7 +64,7 @@ class Dataset(object):
         """
         logger = logging.getLogger(__name__)
         self.config = config
-        print("DEBUG creating dataset from ",metafile,"config is",config,file=sys.stderr)
+        print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
         Vocabs.init()
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)
@@ -522,7 +522,8 @@ class Dataset(object):
                 # print("DEBUG: indep_len/dep_len=%s/%s" % (len(indep), len(dep)), file=sys.stderr)
                 # print("DEBUG: dep is:", dep, file=sys.stderr)
                 # print("DEBUG: indep is:", indep, file=sys.stderr)
-                assert len(dep) == seq_len
+                if not indep_only:
+                    assert len(dep) == seq_len
                 seq_max_len = max(seq_len, seq_max_len)
                 # now we need to add a list to each of the features, each list is the
                 # values for a feature for all the sequence elements.

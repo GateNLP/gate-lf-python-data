@@ -21,7 +21,7 @@ class TargetNominal(object):
         if targets_need_padding:
             pio = True
         else:
-            nspo = True
+            nspi = True
         self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_special_indices=nspi, pad_index_only=pio, emb_train="target")
         self.vocab.finish()
         print("DEBUG!!!! Created vocab for target, itos is ", self.vocab.itos,  "pad_index_only is", self.vocab.pad_index_only, file=sys.stderr)

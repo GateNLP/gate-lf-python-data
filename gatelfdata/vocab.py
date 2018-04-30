@@ -90,7 +90,7 @@ class Vocab(object):
             self.freqs = Counter()
         self.no_special_indices = no_special_indices
         self.pad_index_only = pad_index_only
-        self.min_freq = emb_minfreq
+        self.min_freq = emb_minfreq or 1
         self.add_symbols = add_symbols
         self.max_size = max_size
         self.emb_dims = emb_dims
