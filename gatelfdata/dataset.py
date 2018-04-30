@@ -48,7 +48,7 @@ class Dataset(object):
         with open(metafile, "rt", encoding="utf-8") as inp:
             return json.load(inp)
 
-    def __init__(self, metafile, reuse_files=False, config=None):
+    def __init__(self, metafile, reuse_files=False, config=None, targets_need_padding=True):
         """Creating an instance will read the metadata and create the converters for
         converting the instances from the original data format (which contains the original
         values and strings) to a converted representation where strings are replaced by
@@ -100,7 +100,7 @@ class Dataset(object):
         # self.datafile = self.meta["dataFile"]
         self.orig_data_file = Dataset.data4meta(metafile)
         self.features = Features(self.meta)
-        self.target = Target.make(self.meta)
+        self.target = Target.make(self.meta, targets_need_padding=targets_need_padding)
         self.isSequence = self.meta["isSequence"]
         if self.isSequence:
             self.maxSequenceLength = self.meta["sequLengths.max"]

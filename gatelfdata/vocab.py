@@ -59,8 +59,9 @@ import math
 class Vocab(object):
     """From the counter object, create string to id and id to string
     mappings."""
-    def __init__(self, counts=None, max_size=None, min_freq=1, add_symbols=None, emb_id=None, emb_file=None,
+    def __init__(self, counts=None, max_size=None, emb_minfreq=1, add_symbols=None, emb_id=None, emb_file=None,
                  no_special_indices=False,
+                 pad_index_only=False,
                  emb_train=None, emb_dims=0, pad_string="", oov_string="<<oov>>",
                  oov_vec_from="random", oov_vec_maxfreq=1):
         """Create a vocabulary instance from the counts. If max_size is
@@ -76,6 +77,9 @@ class Vocab(object):
         If no_special_indices=True, then only the words from the original counts are added and no padding or oov
         or other special indices are added. In that case, trying to look up a symbol not in the vocabulary
         results in an exception.
+        The parameter pad_index_only creates a vocab where 0 is reserved for the pad index.
+        NOTE: currently this is what we use for ALL nominal targets if they get represented as an index
+        (and not as onehot).
         """
         if not add_symbols:
             add_symbols = []
@@ -85,7 +89,8 @@ class Vocab(object):
         else:
             self.freqs = Counter()
         self.no_special_indices = no_special_indices
-        self.min_freq = min_freq
+        self.pad_index_only = pad_index_only
+        self.min_freq = emb_minfreq
         self.add_symbols = add_symbols
         self.max_size = max_size
         self.emb_dims = emb_dims
@@ -114,6 +119,10 @@ class Vocab(object):
         if self.emb_file and self.emb_train == "onehot":
             raise Exception("Vocab emb_train 'onehot' not usable with embeddings file, "
                             "got emb_train=%s and emb_file=%s" % (self.emb_train, self.emb_file))
+        self.have_oov = True
+        if no_special_indices or pad_index_only:
+            self.have_oov = False
+        print("DEBUGING initialized vocab", self.emb_id, "pad_index_only is", self.pad_index_only, file=sys.stderr)
 
     # TODO: encapsulate the self.stoe access: once we use loading the memory mapped numpy array
     # as an alternative loading method, we will have two possible ways of how to get the embedding,
@@ -245,6 +254,7 @@ class Vocab(object):
     def finish(self):
         """Build the actual vocab instance, it can only be used properly to look-up things after calling
         this method, but no parameters can be changed nor counts added after this."""
+        print("DEBUGING finishing vocab", self.emb_id, "pad_index_only is", self.pad_index_only, file=sys.stderr)
 
         # if the emb_train parameter was never set, try to come up with a sensible default here:
         # - if a file is specified, use the setting "no" for now,
@@ -275,7 +285,15 @@ class Vocab(object):
         self.itos = sorted(self.itos, reverse=True, key=lambda x: self.freqs[x])
         # add the additional symbols at the beginning, first and always at index 0, the pad symbol, except
         # when no_pad is True
-        if not (self.no_special_indices or self.emb_train == "onehot"):
+        if self.no_special_indices:
+            pass # do nothing what we have is all we need
+            print("DEBUGING in finishing vocab, onehot", self.emb_id, "pad_index_only is", self.pad_index_only, "itos is",
+                  self.itos, file=sys.stderr)
+        elif self.pad_index_only:
+            self.itos = [self.pad_string] + self.itos
+            print("DEBUGING in finishing vocab", self.emb_id, "pad_index_only is", self.pad_index_only, "itos is",
+                  self.itos, file=sys.stderr)
+        else:
             self.itos = [self.pad_string] + [self.oov_string] + self.add_symbols + self.itos
         if self.max_size and len(self.itos) > self.max_size:
             self.itos = self.itos[:self.max_size]
@@ -419,7 +437,11 @@ class Vocab(object):
         if string in self.stoi:
             return self.stoi[string]  # NOTE: the pad string is in there!
         else:
-            return 1  # the index of the OOV if not found!
+            if self.have_oov:
+                return self.stoi[self.oov_string]
+            else:
+                # not a proper word no oov character, for now throw an exception, this should probablly never happen
+                raise Exception("String not found in vocab and do not have OOV symbol either: %s" % string)
 
     def string2emb(self, string):
         """Return the embedding for the string or OOV if not found or the zero vector if string is the padding symbol"""
@@ -432,11 +454,15 @@ class Vocab(object):
 
     def string2onehot(self, thestring):
         """return a one-hot vector for the string"""
+        # TODO: if the string is not found this should instead return the onehot vector of the OOV, if
+        # we do have an OOV symbol
         if not self.finished:
             raise Exception("Vocab %r has not been finished!" % self)
         vec = [0.0] * len(self.itos)
         if thestring in self.stoi:
             vec[self.stoi[thestring]] = 1.0
+        elif self.have_oov:
+            vec[self.stoi[self.oov_string]] = 1.0
         return vec
 
     def zero_onehotvec(self):
