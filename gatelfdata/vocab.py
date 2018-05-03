@@ -247,6 +247,12 @@ class Vocab(object):
 
         if not self.emb_train:
             raise Exception("Vocab emb_train parameter never set")
+            # we set our own default here: if a file is specified, then emb_train is no, otherwise
+            # it is yes.
+            if self.emb_file:
+                self.emb_train = "no"
+            else:
+                self.emb_train = "yes"
 
         # Course of action:
         # 1) If words get removed from our own vocab because of frequency or max size, this
