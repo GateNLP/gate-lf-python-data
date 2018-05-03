@@ -24,8 +24,10 @@ class Vocabs(object):
                 emb_train = attrinfo.get("emb_train")
                 emb_file = attrinfo.get("emb_file")
                 emb_dims = attrinfo.get("emb_dims")
+                emb_minfreq = attrinfo.get("emb_minfreq")
                 vocab = Vocab(featurestats["stringCounts"],
-                              emb_id=emb_id, emb_train=emb_train, emb_file=emb_file, emb_dims=emb_dims)
+                              emb_id=emb_id, emb_train=emb_train, emb_file=emb_file, emb_dims=emb_dims,
+                              emb_minfreq=emb_minfreq)
                 cls.vocabs[emb_id] = vocab
 
     @classmethod
