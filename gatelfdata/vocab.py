@@ -66,7 +66,7 @@ class Vocab(object):
                  oov_vec_from="random", oov_vec_maxfreq=1):
         """Create a vocabulary instance from the counts. If max_size is
         given sorts by frequency and only retains the max_size most frequent
-        ones. Removes everything less the min_freq.
+        ones. Removes everything less the emb_minfreq.
         Adds the symbols listed in add_symbols to index positions 2 and after.
         Raises an error if any of these symbols is already there.
         The padding index is always 0, however the string for which the padding index is returned can be set.
@@ -90,7 +90,7 @@ class Vocab(object):
             self.freqs = Counter()
         self.no_special_indices = no_special_indices
         self.pad_index_only = pad_index_only
-        self.min_freq = emb_minfreq or 1
+        self.emb_minfreq = emb_minfreq or 1
         self.add_symbols = add_symbols
         self.max_size = max_size
         self.emb_dims = emb_dims
@@ -236,8 +236,8 @@ class Vocab(object):
                 self.stoe[add_symbols] = emb
                 self.add_symbols.append(add_symbols)
 
-    def set_min_freq(self, min_freq=1):
-        self.min_freq = min_freq
+    def set_emb_minfreq(self, min_freq=1):
+        self.emb_minfreq = min_freq
 
     def set_max_size(self, max_size=None):
         self.max_size = max_size
@@ -278,8 +278,8 @@ class Vocab(object):
         # 5) we now know how big the matrix for the embeddings needs to be, create it and set the rows
         # 6) remove the dictionary stoe, we can do this using matrix[stoi] instead
 
-        # got through the entries and put all the keys satisfying the min_freq limit into a list
-        self.itos = [s for s in self.freqs if (self.freqs[s] >= self.min_freq)]
+        # got through the entries and put all the keys satisfying the emb_minfreq limit into a list
+        self.itos = [s for s in self.freqs if (self.freqs[s] >= self.emb_minfreq)]
         # sort the keys by frequency, then alphabetically in reverse order
         self.itos = sorted(self.itos)
         self.itos = sorted(self.itos, reverse=True, key=lambda x: self.freqs[x])
