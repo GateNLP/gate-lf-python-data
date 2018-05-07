@@ -260,6 +260,8 @@ class Vocab(object):
         # - if a file is specified, use the setting "no" for now,
         # - otherwise use "yes"
         if not self.emb_train:
+            # we set our own default here: if a file is specified, then emb_train is no, otherwise
+            # it is yes.
             if self.emb_file:
                 self.emb_train = "no"
             else:
