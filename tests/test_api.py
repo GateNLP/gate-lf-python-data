@@ -8,7 +8,7 @@ import sys
 import logging
 
 logger = logging.getLogger("gatelfdata")
-logger.setLevel(logging.WARN)
+logger.setLevel(logging.INFO)
 streamhandler = logging.StreamHandler()
 formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
@@ -67,25 +67,23 @@ class TestVocab1(unittest.TestCase):
 
     def test_vocab1(self):
         d1 = {"a": 12, "b": 13, "c": 1, "d": 2, "x": 12}
-        v1 = Vocab(d1, add_symbols=["<<START>>"], max_size=6, emb_minfreq=2, emb_train="yes")
-        v1.finish()
+        v1 = Vocab(d1, max_size=6, emb_minfreq=2, emb_train="yes")
+        v1.finish(remove_counts=False)
         logger.info("\nTestVocab/test_vocab1: v1.itos=%r" % v1.itos)
         logger.info("\nTestVocab/test_vocab1: v1.stoi=%r" % v1.stoi)
         assert len(v1.itos) == 6
         assert len(v1.stoi) == 6
         assert "a" in v1.stoi
-        assert v1.idx2string(3) == "b"
-        assert v1.string2idx("a") == 4
-        assert v1.string2idx("b") == 3
-        assert v1.string2idx("<<START>>") == 2
+        assert v1.idx2string(3) == "a"
+        assert v1.string2idx("a") == 3
+        assert v1.string2idx("b") == 2
         vec = v1.string2onehot("a")
         assert len(vec) == 6
         assert vec[0] == 0.0
         assert vec[1] == 0.0
         assert vec[2] == 0.0
-        assert vec[3] == 0.0
-        assert vec[4] == 1.0
-        assert vec[5] == 0.0
+        assert vec[3] == 1.0
+        assert vec[4] == 0.0
         c = v1.count("d")
         assert c == 2
 
@@ -109,17 +107,19 @@ class TestVocab1(unittest.TestCase):
         cnt1 = {'was': 20, 'as': 10, 'las': 12, 'mas': 1, 'please': 33, 'say': 40, 'sama': 1, 'always': 21, 'mais': 2,
                 'because': 33, 'esta': 5, 'last': 11, 'thanks': 13, 'ass': 13, 'has': 55, 'pas': 1, 'said': 25,
                 'bisa': 2, 'same': 13, 'days': 21}
-        v1 = Vocab(cnt1, emb_train="yes", emb_file=EMBFILE20_50TXT, oov_vec_from="maxfreqavg", oov_vec_maxfreq=2)
+        v1 = Vocab(cnt1, emb_train="yes", emb_file=EMBFILE20_50TXT, emb_minfreq=3)
         v1.finish()
         # this should contain all the entries from cnt1 plus the pad and OOV indices but minus the ones
         # that got removed because the frequency is <= 2
-        logger.info("itos=%r" % v1.itos)
+        # logger.info("itos=%r" % v1.itos)
+        # logger.info("len(v1.itos)=%s, len(cnt1)+2-5=%s" % (len(v1.itos), len(cnt1)+2-5))
         assert len(v1.itos) == len(cnt1)+2-5
         # we should be able to get all the embedding vectors as one big matrix
         allembs = v1.get_embeddings()
         # logger.info("allembs shape=%s" % (allembs.shape,))
         assert allembs.shape[0] == len(cnt1)+2-5
         assert allembs.shape[1] == 25
+        assert v1.string2idx("dfsdfsdfsdf") == 1
         # logger.info("allembs=%s" % allembs)
 
 
@@ -423,12 +423,13 @@ class Tests4Dataset1test1(unittest.TestCase):
         # print("DEBUG: valset_conv=%s" % valset_conv, file=sys.stderr)
         assert len(valset_conv) == 3
         vconvi2 = valset_conv[1]
-        # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG: vconvi2=", vconvi2, file=sys.stderr)
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG: vconvi2=", vconvi2, file=sys.stderr)
         # assert vconvi2 == [[14, 158, 26, 105, 13, 320, 3, 7, 2, 2, 2, 2, 2, 2, 0, 152, 29, 15, 0, 15, 0, 216,
         #                    0, 102, 0, 0], 0]
         # TODO: why did some of the indices change from the commented to the new part here?
         #      vconvi2 == [[14, 158, 26, 105, 13, 320, 1, 5, 2, 2, 2, 2, 2, 2, 0, 152, 29, 15, 0, 15, 0, 216, 0, 102, 0, 0], 1]
         assert vconvi2 == [[14, 158, 26, 105, 13, 320, 3, 7, 2, 2, 2, 2, 2, 2, 0, 152, 29, 15, 0, 15, 0, 216, 0, 102, 0, 0], 1]
+        #                 [[14, 158, 26, 105, 13, 320, 3, 7, 2, 2, 2, 2, 2, 2, 2, 152, 29, 15, 2, 15, 2, 216, 2, 102, 2, 2], 1]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep

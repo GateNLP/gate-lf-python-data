@@ -10,79 +10,79 @@ import math
 # OK, the protocol for using this is this:
 # * create a preliminary instance using "Vocab(...)"
 #   This can be a completely empty instance or already contain an initial set of counts using counts=
-#   and/or initial embeddings-information stored with the Vocab
 #   NOTE: if an embedding file should be used, it should be specified at creation time
 #   NOTE: emb_train can be "yes", "mapping", "no" or "onehot":
-#   * yes: we only need to eventually store the embeddings for the words taken from our training set
-#        and optionally calculate a OOV vector from the words that have low frequency.
-#        Since we want to train, we should also train the OOV vector, so we should have training examples,
-#        so we should remove the low-frequency words from the vocab.
-#        embs: keep if in vocab and not used for OOV vector
-#        vocab: keep if in embs, remove if used for OOV
-#   * no: we remember all embeddings. The OOV vector could be random or calculated by averaging over the
-#     known embeddings for low-frequency training set words.
-#     Words in our own training set which are not in the embeddings vocabulary can be
-#     removed and will get treated as OOV
-#     embs: keep all except those used to calculate OOV
-#     vocab: keep if in emb, except remove if used for oov
-#   * mapping: keep all embeddings. OOV vector is average over low frequency training set words, again optionally
-#     with replacement of the embedding for those with the OOV vector
-#     embs: keep all
-#     vocab: this is more complex - we could still create an OOV vector and remove some words found in the training
-#       set to train a mapping for it. However at test time, we may want to go back and use the original embeddings
-#       for those words. So for this we may eventually need to have .train() and .eval() functions on vocab.
-#       Also words in vocab not in the embeddings should get a random vector assigned.
-#       For now the strategy is this:
-#       - all embeddings are kept except the ones used for OOV
-#       - if a vocab is not in emb, it gets a random vector
-#       - if a vocab is in emb and is low-freq, it is used to calculate the OOV vector and removed from vocab (and emb)
-#   * onehot: ignore the file or throw an error/warning
-#   * None: throws an error when finishing
-#   NOTE: so this means:
-#   * if an embedding is used to calculate OOV, word is removed from emb and removed from vocab
 # * n times, add to the counts using v.add_counts() and also set embeddings-information using v.set_xxx()
-#   and other info (e.g. additional symbols use) using v.set_xxx()
+#   and other info (e.g. additional symbols use) using v.set_xxx() to override what was specified
+#   These settings should all be settings which only are relevant once finish() is called
 # * Once all the counts have been set, finish the datastructure and prepare for use using v.finish()
 # * only after f.finish() is run the methods for mapping from and to indices, frequencies, or vectors
 #   are usable, before finish() these methods will abort with an error!
+# * In general:
+#   * words which should be in the vocab get mapped to their index
+#   * words not in the vocab get mapped to the special "OOV" index (1 by default)
+#   * there is the special PAD symbol which is 0 by default
+# * Once finish has been completed, a numpy matrix with the embeddings can be retrieved using
+#   get_embeddings()
+# * At some point, all the unimportant data can be cleaned up using v.cleanup(embeddings=True,frequencies=True)
+#   After this, get_embeddings() raises an exception
 
-# Configuration and how it affects lookup:
-# * padding symbol / padding index : the string that will get mapped to a zero vector.
-#   by default this is index=0 and symbol=the empty string
+# Overview over how indices and embeddings are created using the various configuration settings:
 #
-# * OOV vector / OOV index: the index returned for a word which is not in the vocabulary and the embedding vector
-#   returned for it. By default this is 1
-# * Other special symbols / indices: indices 2-9 are reserved for additional symbols like "<START>" but not
-#   used by default.
+# train=yes, file=None:
+# * all words in the training set not filtered by minfrequ or maxsize get mapped to an index
+# * all other words get mapped to the OOV index
+# * if there are k words, there will be k+2 (OOV, PAD) indices
+# * Embeddings: all embeddings are some random vectors, PAD is zero
+#
+# train=yes, file=embfile
+# * index for all words in the training set > minfreq, maxsize which are also in the embeddings file
+# * OOV for all other words (random vector)
+# * Embeddings: all embeddings from file except OOV (random) and PAD(zero)
+# * TODO: at some point could average low-freq vectors in the embeddings
+#
+# train=no, file=None
+# * same as for train=yes, file=None
+# * only pytorch layer works differently
+#
+# train=no, file=embfile
+# * same as for train=yes, file=embfile
+# * only pytorch layer works differently
+#
+# train=mapping, file=None
+# * signal an ERROR
+#
+# train=mapping, file=embfile
+# * index for all words either in our vocab or in the embeddings file, but NOT in our vocab and < minfreq!
+# * so we have to load all embeddings from the file, except those which correspond to the words we
+#   have filtered. In addition, all the words not filtered and not in the embeddings get random vectors,
+#   and we create an OOV vector as well.
+#
+# train=onehot, file=none
+# * ignore minfreq, dims
+# * dims is equal to number of values
+# * no OOV dim, only padding, unless suppressed
+# * embeddings matrix is diagonal matrix
 
 
 class Vocab(object):
     """From the counter object, create string to id and id to string
     mappings."""
-    def __init__(self, counts=None, max_size=None, emb_minfreq=1, add_symbols=None, emb_id=None, emb_file=None,
+    def __init__(self, counts=None, max_size=None,
+                 emb_id=None, emb_train=None, emb_dims=0, emb_file=None, emb_minfreq=1,
                  no_special_indices=False,
                  pad_index_only=False,
-                 emb_train=None, emb_dims=0, pad_string="", oov_string="<<oov>>",
-                 oov_vec_from="random", oov_vec_maxfreq=1):
+                 pad_string="", oov_string="<<oov>>"):
         """Create a vocabulary instance from the counts. If max_size is
         given sorts by frequency and only retains the max_size most frequent
         ones. Removes everything less the emb_minfreq.
-        Adds the symbols listed in add_symbols to index positions 2 and after.
-        Raises an error if any of these symbols is already there.
         The padding index is always 0, however the string for which the padding index is returned can be set.
-        The OOV index is always 1, however, it can be configured how to create the OOV vector using oov_vec_from
-        which can be "random" (create a random vector), "maxfreqavg" (average all embeddings with at most
-        oov_vec_maxfreq). If maxfreqavg is specified, then the words matching will always be removed from the
-        embeddings and our own vocabulary, resulting in the OOV index and vector to get returned.
-        If no_special_indices=True, then only the words from the original counts are added and no padding or oov
-        or other special indices are added. In that case, trying to look up a symbol not in the vocabulary
-        results in an exception.
-        The parameter pad_index_only creates a vocab where 0 is reserved for the pad index.
-        NOTE: currently this is what we use for ALL nominal targets if they get represented as an index
-        (and not as onehot).
+        The OOV index is always 1, however the string for which the padding index is returned can be set.
+        If no_special_indices is true, only indices for words are added, not for padding or oov. looking up
+        a word not in the vocabulary will result in an exception.
+        If pad_index_only is true then no oov index will be used, looking up a word not in the vocabulary raises
+        an exception. However, the index 0 is reserved for padding.
         """
-        if not add_symbols:
-            add_symbols = []
         logger = logging.getLogger(__name__)
         if counts:
             self.freqs = Counter(counts)
@@ -91,7 +91,6 @@ class Vocab(object):
         self.no_special_indices = no_special_indices
         self.pad_index_only = pad_index_only
         self.emb_minfreq = emb_minfreq or 1
-        self.add_symbols = add_symbols
         self.max_size = max_size
         self.emb_dims = emb_dims
         self.emb_id = emb_id
@@ -104,15 +103,9 @@ class Vocab(object):
         self.pad_string = pad_string
         self.oov_string = oov_string
         self.finished = False
-        self.oov_vec_from = oov_vec_from
-        self.oov_vec_maxfreq = oov_vec_maxfreq
         self.embeddings_loaded = False
         self.embeddings = None
         self.oov_emb = None
-        if oov_vec_from != "random" and oov_vec_from != "maxfreqavg":
-            raise Exception("Vocab parameter oov_vec_from must be one of: random, maxfreqavg")
-        if emb_train == "onehot" and emb_file:
-            logger.warning("Vocab parameter emb_file is ignored if emb_train is onehot")
         if not self.emb_file and self.emb_train == "mapping":
             raise Exception("Vocab emb_train 'mapping' not usable without embeddings file, "
                             "got emb_train=%s and emb_file=%s" % (self.emb_train, self.emb_file))
@@ -120,20 +113,25 @@ class Vocab(object):
             raise Exception("Vocab emb_train 'onehot' not usable with embeddings file, "
                             "got emb_train=%s and emb_file=%s" % (self.emb_train, self.emb_file))
         self.have_oov = True
-        if no_special_indices or pad_index_only:
+        self.have_pad = True
+        self.have_vocab = False  # this indicates if we have already built the final vocab
+        if no_special_indices:
             self.have_oov = False
-        print("DEBUGING initialized vocab", self.emb_id, "pad_index_only is", self.pad_index_only, file=sys.stderr)
+            self.have_pad = False
+        if pad_index_only:
+            self.have_oov = False
 
-    # TODO: encapsulate the self.stoe access: once we use loading the memory mapped numpy array
-    # as an alternative loading method, we will have two possible ways of how to get the embedding,
-    # either through self.stoe directly or though self.stoeidx to get the index and then the matrix
-    # to get the embedding. Instead implement a method _get_emb(str) which will handle this
-    # correctly. We also need to modify the code in finish() for removing embeddings to use
-    # a method _del_emb(str) to remove from self.stoe or self.stoidx and finally "finish" the
-    # embeddings to create the final packed matrix in all situations, for caching and fast
-    # re-loading!
+    def check_finished(self, method="method"):
+        if not self.finished:
+            raise Exception("Cannot call", method, "unless the finish() method has been called first!")
 
-    def load_embeddings(self, emb_file, only4vocab=False):
+    def check_nonfinished(self, method="method"):
+        if self.finished:
+            raise Exception("Cannot call", method, "after the finish() method has been called!")
+
+    def load_embeddings(self, emb_file, filterset=set()):
+        # TODO: on the fly ignore everything not in the vocab
+        # TODO: this can only be called once we have the vocab: self.have_vocab
         """Load pre-calculated embeddings from the given file. This will update embd_dim as needed!
         Currently only supports text format, compressed text format or a two file format where
         the file with extension ".vocab" has one word per line and the file with extension ".npy"
@@ -142,7 +140,8 @@ class Vocab(object):
         or ".vocab" and ".npy" in the emb_file given.
         The text formats may or may not have a first line that indicates the number of words and
         number of dimensions.
-        If only4vocab is True, the embeddings for words not in our own vocabulary will be ignored.
+        If filterset is non-empty, all embeddings not in the set are loaded, otherwise all embeddings
+        which are also already in the vocabulary are loaded.
         NOTE: this will not check if the case conventions or other conventions (e.g. hyphens) for the tokens
         in our vocabulary are compatible with the conventions used for the embeddings.
         """
@@ -161,12 +160,13 @@ class Vocab(object):
                     word = fields[0]
                     embstr = fields[1:]
                     embs = [float(e) for e in embstr]
-                    if not only4vocab:
-                        self.stoe[word] = embs
+                    if filterset:
+                        if word not in filterset:
+                            self.stoe[word] = embs
                     else:
                         if word in self.stoi:
                             self.stoe[word] = embs
-                # update the emb_dims setting
+                # update the emb_dims setting from the last embedding we read, if any
                 if embs and len(self.stoe) > 0:
                     self.emb_dims = len(embs)
         elif emb_file.endswith(".vocab") or emb_file.endswith(".npy"):
@@ -176,13 +176,13 @@ class Vocab(object):
         self.embeddings_loaded = True
 
     def get_embeddings(self):
-        """Return a numpy matrix of the embeddings in the order of the indices. If no embeddings have been
-        loaded this returns None."""
-        # NOTE: this simply returns the array that was created in the finish method!
+        """Return a numpy matrix of the embeddings in the order of the indices. If this is called
+        before finish() an exception is raised"""
+        self.check_finished("get_embeddings")
         return self.embeddings
 
     @staticmethod
-    def rnd_vec(dims=100, strng=None, as_numpy=True):
+    def rnd_vec(dims, strng=None, as_numpy=True):
         """Returns a random vector of the given dimensions where each dimension is in [0.0..1.0).
         If str is None, the vector is dependent on the current numpy random state. If a string is given,
         then the random state is seeded with a number derived from the string first, so the random vector
@@ -204,57 +204,33 @@ class Vocab(object):
     def add_counts(self, counts):
         """Incrementally add additional counts to the vocabulary. This can be done only before the finish
         method is called"""
-        if self.finished:
-            print("ERROR: Vocab method add_counts() cannot be called after finish()", file=sys.stderr)
-            raise Exception("Vocab method add_counts() cannot be called after finish()")
+        self.check_nonfinished("add_counts")
         self.freqs.update(counts)
 
-    def add_symbols(self, add_symbols=None):
-        """Incrementally add additional special symbols. By default, the vectors for these symbols will be random."""
-        if not add_symbols:
-            add_symbols = []
-        if self.finished:
-            raise Exception("Vocab method add_symbols() cannot be called after finish()")
-        if self.no_special_indices:
-            return
-        for s in add_symbols:
-            if s in self.freqs:
-                raise Exception("Additional symbol already in counts:", s)
-        if isinstance(add_symbols, list):
-            for s in add_symbols:
-                if s in self.add_symbols:
-                    raise Exception("Symbol already added:", s)
-                else:
-                    emb = Vocab.rnd_vec(self.emb_dims, s)
-                    self.stoe[s] = emb
-                    self.add_symbols.append(s)
-        else:
-            if add_symbols in self.add_symbols:
-                raise Exception("Symbol already added:", add_symbols)
-            else:
-                emb = Vocab.rnd_vec(self.emb_dims, add_symbols)
-                self.stoe[add_symbols] = emb
-                self.add_symbols.append(add_symbols)
-
     def set_emb_minfreq(self, min_freq=1):
+        self.check_nonfinished("set_emb_minfreq")
         self.emb_minfreq = min_freq
 
     def set_max_size(self, max_size=None):
+        self.check_nonfinished("set_max_size")
         self.max_size = max_size
 
     def set_emb_id(self, embid):
+        self.check_nonfinished("set_emb_id")
         self.emb_id = embid
 
     def set_emb_file(self, file):
+        self.check_nonfinished("set_emb_file")
         self.emb_file = file
 
     def set_emb_dims(self, dim):
+        self.check_nonfinished("set_emb_dims")
         self.emb_dims = dim
 
-    def finish(self):
+    def finish(self, remove_counts=True):
         """Build the actual vocab instance, it can only be used properly to look-up things after calling
         this method, but no parameters can be changed nor counts added after this."""
-        print("DEBUGING finishing vocab", self.emb_id, "pad_index_only is", self.pad_index_only, file=sys.stderr)
+        self.check_nonfinished("finish")
 
         # if the emb_train parameter was never set, try to come up with a sensible default here:
         # - if a file is specified, use the setting "no" for now,
@@ -267,43 +243,41 @@ class Vocab(object):
             else:
                 self.emb_train = "yes"
 
-        # print("DEBUG: finishing vocab for ", self.emb_id, file=sys.stderr)
-
-        # Course of action:
-        # 1) If words get removed from our own vocab because of frequency or max size, this
-        # has to be done first.
-        # 2) At this point we can load the embeddings and optionally limit to just what we have now
-        # in the vocabulary (all cases except mapping)
-        # 3) now if we need to calculate the OOV vector from rare words, do this and remove those
-        #  words from the vocab and the embeddings.
-        # 4) if we have mapping, add all embedding words left which are not in our vocab to our vocab
-        # 5) we now know how big the matrix for the embeddings needs to be, create it and set the rows
-        # 6) remove the dictionary stoe, we can do this using matrix[stoi] instead
-
-        # got through the entries and put all the keys satisfying the emb_minfreq limit into a list
-        self.itos = [s for s in self.freqs if (self.freqs[s] >= self.emb_minfreq)]
+        # go through the entries and put all the keys satisfying the emb_minfreq limit into a list
+        # put all the words not satisfying the restriction in the filtered_words set
+        filtered_words = set()
+        self.itos = []
+        for s in self.freqs:
+            if self.freqs[s] >= self.emb_minfreq:
+                self.itos.append(s)
+            else:
+                filtered_words.add(s)
         # sort the keys by frequency, then alphabetically in reverse order
         self.itos = sorted(self.itos)
         self.itos = sorted(self.itos, reverse=True, key=lambda x: self.freqs[x])
         # add the additional symbols at the beginning, first and always at index 0, the pad symbol, except
         # when no_pad is True
         if self.no_special_indices:
-            pass # do nothing what we have is all we need
-            print("DEBUGING in finishing vocab, onehot", self.emb_id, "pad_index_only is", self.pad_index_only, "itos is",
-                  self.itos, file=sys.stderr)
+            pass  # do nothing what we have is all we need
         elif self.pad_index_only:
+            assert self.pad_string not in self.freqs
             self.itos = [self.pad_string] + self.itos
-            print("DEBUGING in finishing vocab", self.emb_id, "pad_index_only is", self.pad_index_only, "itos is",
-                  self.itos, file=sys.stderr)
         else:
-            self.itos = [self.pad_string] + [self.oov_string] + self.add_symbols + self.itos
+            assert self.pad_string not in self.freqs
+            assert self.oov_string not in self.freqs
+            self.itos = [self.pad_string] + [self.oov_string] + self.itos
+        # trim the itos according to max_size and add any trimmed words to the filtered_words set
         if self.max_size and len(self.itos) > self.max_size:
+            for w in self.itos[self.max_size:]:
+                filtered_words.add(w)
             self.itos = self.itos[:self.max_size]
         # now create the reverse map
         self.stoi = defaultdict(int)
         for i, s in enumerate(self.itos):
             self.stoi[s] = i
         self.n = len(self.itos)
+
+        print("DEBUG: initial itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
 
         if not self.emb_file and not self.emb_dims:
             # caclulate some embeddings dimensions automatically from the number of words
@@ -313,129 +287,80 @@ class Vocab(object):
             # this is 3 for 10, 10 for 100, 31 for 1000, 100 for 10k and 316 for 100k
             self.emb_dims = int(math.sqrt(self.n+2))
 
-
-        # figure out if we need all embeddings, otherwise only load the ones corresponding to the words we have
-        if self.emb_train == "mapping":
-            only4vocab = False
-        else:
-            only4vocab = True
+        # if needed, load the embeddings: if the set we pass on is empty, only the embeddings in the vocab
+        # are loaded, otherwise all embeddings not in the filter set are loaded
         if self.emb_file:
-            self.load_embeddings(self.emb_file, only4vocab=only4vocab)
-
-        if not self.no_special_indices:
-            self.stoi[self.pad_string] = 0
-            self.stoi[self.oov_string] = 1
-            self.stoe[self.pad_string] = self.zero_vec()
-
-        # if we need to calculate the OOV vector from the rare words, do this and then remove those
-        # words from both our own list and the embeddings.
-        todelete = set()
-        if self.embeddings_loaded and self.oov_vec_from == "maxfreqavg":
-            # go through all the entries in our vocabulary and check the frequency
-            # if it is lower than oov_vec_maxfreq, try to get the embedding from the embedding file
-            # if we got an embedding, add it to the sum and count, after going through all, calculate the mean
-            embsum = self.zero_vec()
-            n = 0
-            for s, f in self.freqs.items():
-                if f <= self.oov_vec_maxfreq:
-                    emb = self.stoe.get(s)
-                    if emb:
-                        # remember for removal
-                        todelete.add(s)
-                        embsum += emb
-                        n += 1
-            self.oov_emb = embsum / n
-            self.stoe[self.oov_string] = self.oov_emb
-        elif self.oov_vec_from == "random":
-            self.oov_emb = self.rnd_vec(dims=self.emb_dims)
-            self.stoe[self.oov_string] = self.oov_emb
-        # NOTE: if oov_vec_from is "random", we will simply use whatever the Embedding layer has assigned to
-        # the our index 1
-        # NOTE: currently if we do not have loaded embeddings but oov_vec_from is maxfreqavg, we throw
-        # and error. We could calculate our own random vectors first and then do the above etc. but for now
-        # it is not worth the effort
-        if (not self.embeddings_loaded) and self.oov_vec_from == "maxfreqavg":
-            raise Exception("Vocab: oov_vec_from='maxfreqavg' cannot be used without an embeddings file ")
-
-        # remember if something needed to get deleted
-        have_deleted = False
-
-        # remove the words we used for OOV from freqs and stoe
-        # print("DEBUG: todelete1=", todelete, file=sys.stderr)
-        if len(todelete) > 0:
-            have_deleted = True
-        for s in todelete:
-            del self.freqs[s]
-            del self.stoe[s]
-
-        # if we use loaded embeddings and train is no or yes, also remove all our own words if they are
-        # not in the embeddings,
-        todelete = set()
-        if self.embeddings_loaded and (self.emb_train == "yes" or self.emb_train == "no"):
-            for s in self.freqs:
-                if s not in self.stoe:
-                    todelete.add(s)
-            if len(todelete) > 0:
-                have_deleted = True
-            # print("DEBUG: todelete2=", todelete, file=sys.stderr)
-            for s in todelete:
-                del self.freqs[s]
-
-        # TODO: !!!somewhere around here, if we have mapping, then:
-        # * add random embedding vectors to stoe for words only in our vocab: DONE
-        # * extend our own vocab by the embeddings words not already in there
-        # The latter requires re-building our datastructures
-        # (NOTE: for mapping we always expect embeddings to be loaded, this has been checked earlier)
-        if self.emb_train == "mapping":
-            # add random vectors to all vocab entries not in the embeddings
-            for s in self.itos:
-                if s not in self.stoe:
-                    self.stoe[s] = self.rnd_vec(dims=self.emb_dims)
-
-        # now if we deleted words, first rebuild the itos and then the stoi also update n
-        if have_deleted:
-            new_itos = [self.pad_string] + [self.oov_string] + [s for s in self.itos if s in self.freqs]
-            self.itos = new_itos
-            self.stoi = defaultdict(int)
-            for i, s in enumerate(self.itos):
-                self.stoi[s] = i
-            self.n = len(self.itos)
+            self.load_embeddings(self.emb_file, filterset=filtered_words)
+            # the embeddings loaded already have been filtered, but our own vocab may need
+            # to get cleaned up now: if filtered_words is empty, then we want to keep only
+            # those words in our vocab which also occur in the embeddings.
+            # Otherwise (this is when we learn a mapping), we keep all our own vocab words which
+            # do not occur in the embeddings, but we create some random embedding vectors for them
+            if filtered_words:
+                # ok, we loaded all embeddings except the filtered vocab words, so we first also
+                # create the random embedding vectors for the words in our vocab not in the embeddings file
+                for s in self.stoi:
+                    if s not in self.stoe:
+                        self.stoe[s] = self.rnd_vec(dims=self.emb_dims, strng=s)
+                # we have also loaded embeddings for words which are not in our vocabulary, we need to add
+                # those to our index. First create the set of words that need to get added
+                words2add = set()
+                for s in self.stoe:
+                    if s not in self.stoi:
+                        words2add.add(s)
+                # now append those words at the end of the itos array and also add them to the stoi dict
+                for s in words2add:
+                    self.itos.append(s)
+                    self.stoi[s] = self.n
+                    self.n += 1
+            else:
+                # we have loaded only those embeddings which are in the vocab, but now we have some
+                # vocab words left which are not in the embeddings: remove them!
+                self.itos = [w for w in self.itos if w == self.pad_string or w == self.oov_string or w in self.stoe]
+                self.stoi = defaultdict(int)
+                for i, s in enumerate(self.itos):
+                    self.stoi[s] = i
+                self.n = len(self.itos)
+            # now if necessary add the padding and oov vectors
+            if not self.no_special_indices and not self.pad_index_only:
+                self.stoe[self.pad_string] = self.zero_vec()
+                self.stoe[self.oov_string] = self.rnd_vec(dims=self.emb_dims, strng=self.oov_string)
+            elif self.pad_index_only:
+                self.stoe[self.pad_string] = self.zero_vec()
+            # now we should have an embedding vector for each word in stoi/itos, so we should now
+            # create the actual embeddings matrix
+            self.embeddings = np.zeros((self.n, self.emb_dims))
+            for s in self.stoi:
+                idx = self.stoi[s]
+                emb = self.stoe[s]
+                self.embeddings[idx] = emb
+        else:  # no emb file, just calculate random embeddings, do this quickly for all we need at once!
+            self.embeddings = np.random.randn(self.n, self.emb_dims)
+            # override the padding vector with a zero vector if needed:
+            if not self.no_special_indices:
+                self.embeddings[0] = np.zeros(self.emb_dims)
 
         # print("DEBUG: itos new=", self.itos, file=sys.stderr)
         # print("DEBUG: stoi new=", self.stoi, file=sys.stderr)
         # print("DEBUG: stoe new=", self.stoe, file=sys.stderr)
 
-        # if we have embeddings, create the numpy matrix and fill it
-        if self.embeddings_loaded:
-            self.embeddings = np.zeros((self.n, self.emb_dims))
-            for i in range(self.n):
-                w = self.itos[i]
-                # we should not get a key error here since we should have reduced our own vocab to what is in stoe
-                emb = self.stoe[w]
-                # print("DEBUG: w=", w, "emb=", emb, file=sys.stderr)
-                # print("DEBUG: np=", np.array(emb), file=sys.stderr)
-                self.embeddings[i, :] = np.array(emb)
-
-        # at this point, we could remove the stoe and freq datastructures to save some memory
-        # for now we keep the freqs
+        # cleanup what we do not need any more
         self.stoe = None
-        # self.freqs = None
-
+        if remove_counts:
+            self.freqs = None
         self.finished = True
-        # print("DEBUG: just created vocab: ", self, file=sys.stderr)
+        print("DEBUG: final itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
 
     def idx2string(self, idx):
         """Return the string for this index"""
-        if not self.finished:
-            raise Exception("Vocab %r has not been finished!" % self)
+        self.check_finished("idx2string")
         if idx >= len(self.itos):
             raise Exception("Vocab: index larger than vocabulary size")
         else:
             return self.itos[idx]
 
     def string2idx(self, string):
-        if not self.finished:
-            raise Exception("Vocab has not been finished!")
+        self.check_finished("string2idx")
         if string in self.stoi:
             return self.stoi[string]  # NOTE: the pad string is in there!
         else:
@@ -444,15 +369,6 @@ class Vocab(object):
             else:
                 # not a proper word no oov character, for now throw an exception, this should probablly never happen
                 raise Exception("String not found in vocab and do not have OOV symbol either: %s" % string)
-
-    def string2emb(self, string):
-        """Return the embedding for the string or OOV if not found or the zero vector if string is the padding symbol"""
-        if not self.finished:
-            raise Exception("Vocab has not been finished!")
-        return self.embeddings[self.string2idx(string)]
-
-    def idx2emb(self, idx):
-        return self.embeddings[idx]
 
     def string2onehot(self, thestring):
         """return a one-hot vector for the string"""
@@ -481,11 +397,14 @@ class Vocab(object):
     def count(self, strng):
         """Return the count/frequency for the given word. NOTE: after finish() this will return 0 for any words
         that have been removed because of one of the filter criteria!!"""
-        c = self.freqs.get(strng)
-        if c:
-            return c
+        if self.freqs:
+            c = self.freqs.get(strng)
+            if c:
+                return c
+            else:
+                return 0
         else:
-            return 0
+            raise Exception("Cannot reqtrieve count, data has been removed")
 
     def __str__(self):
         return self.__repr__()+":nentries=%d" % len(self.stoi)
