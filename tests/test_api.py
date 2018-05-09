@@ -98,7 +98,7 @@ class TestVocab1(unittest.TestCase):
         v1.finish(remove_counts=False)
         logger.debug("\nTestVocab/test_vocab1b: v1.itos=%r" % v1.itos)
         logger.debug("\nTestVocab/test_vocab1b: v1.stoi=%r" % v1.stoi)
-        emb =v1.string2emb("a")
+        emb = v1.string2emb("a")
         logger.debug("\nTestVocab/test_vocab1b: emb(a)=%r" % emb)
         assert numpy.array_equal(emb, numpy.array([0.0, 1.0, 0.0, 0.0, 0.0]))
         assert len(v1.itos) == 6

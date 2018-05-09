@@ -6,6 +6,9 @@ import re
 import numpy as np
 import sys
 import math
+# TODO: maybe make use of the gensim library optional?
+import gensim
+from gensim.models.word2vec import Vocab, Word2Vec
 
 # OK, the protocol for using this is this:
 # * create a preliminary instance using "Vocab(...)"
@@ -72,6 +75,7 @@ class Vocab(object):
                  emb_id=None, emb_train=None, emb_dims=0, emb_file=None, emb_minfreq=1,
                  no_special_indices=False,
                  pad_index_only=False,
+                 emb_dir=None,
                  pad_string="", oov_string="<<oov>>"):
         """Create a vocabulary instance from the counts. If max_size is
         given sorts by frequency and only retains the max_size most frequent
@@ -84,6 +88,8 @@ class Vocab(object):
         an exception. However, the index 0 is reserved for padding.
         NOTE: if emb_train is onehot and neither no_special_indices nor pad_index_only is true,
         for now we automatically use pad_index_only!!!!
+        If emb_dir is not None, then all references to relative (embeddings) files are relative to that
+        directory.
         """
         logger = logging.getLogger(__name__)
         if counts:
@@ -103,6 +109,7 @@ class Vocab(object):
         self.itos = None
         self.stoi = None
         self.stoe = {}
+        self.emb_dir = emb_dir
         self.n = 0
         self.pad_string = pad_string
         self.oov_string = oov_string
@@ -134,14 +141,15 @@ class Vocab(object):
             raise Exception("Cannot call", method, "after the finish() method has been called!")
 
     def load_embeddings(self, emb_file, filterset=set()):
+        logger = logging.getLogger(__name__)
         # TODO: on the fly ignore everything not in the vocab
         # TODO: this can only be called once we have the vocab: self.have_vocab
         """Load pre-calculated embeddings from the given file. This will update embd_dim as needed!
         Currently only supports text format, compressed text format or a two file format where
         the file with extension ".vocab" has one word per line and the file with extension ".npy"
         is a matrix with as many rows as there are words and as many columns as there are dimensions.
-        The format is identified by the presence of one of the extensions ".txt", ".txt.gz",
-        or ".vocab" and ".npy" in the emb_file given.
+        The format is identified by the presence of one of the extensions ".txt", ".vec", ".txt.gz",
+        or ".vocab" and ".npy" in the emb_file given. (".vec" is an alias for ".txt")
         The text formats may or may not have a first line that indicates the number of words and
         number of dimensions.
         If filterset is non-empty, all embeddings not in the set are loaded, otherwise all embeddings
@@ -149,11 +157,13 @@ class Vocab(object):
         NOTE: this will not check if the case conventions or other conventions (e.g. hyphens) for the tokens
         in our vocabulary are compatible with the conventions used for the embeddings.
         """
-        if emb_file.endswith(".txt") or emb_file.endswith(".txt.gz"):
+        if emb_file.endswith(".txt") or emb_file.endswith(".vec") or emb_file.endswith(".txt.gz"):
             if emb_file.endswith(".txt.gz"):
                 reader = gzip.open
             else:
                 reader = open
+            # TODO: if emb_file is relative, try to make it relative to the directory where the metafile is
+            logger.info("Loading embeddings for %s from %s" % (self.emb_id, emb_file))
             with reader(emb_file, 'rt', encoding="utf-8") as infile:
                 n_lines = 0
                 for line in infile:
@@ -175,9 +185,14 @@ class Vocab(object):
                     self.emb_dims = len(embs)
         elif emb_file.endswith(".vocab") or emb_file.endswith(".npy"):
             raise Exception("TODO: format .vocab/.npy not yet implemented!")
+        elif emb_file.endswith(".gensim"):
+            gensimmodel = gensim.models.KeyedVectors.load(emb_file, mmap='r')
+            # now copy over only the embeddings we actually need
+            # TODO: !!!!
         else:
             raise Exception("Embeddings file must have one of the extensions: .txt, .txt.gz, .vocab, .npy")
         self.embeddings_loaded = True
+        logger.info("Embeddings for %s loaded: %s, dims=%s" % (self.emb_id, len(embs), self.emb_dims))
 
     def get_embeddings(self):
         """Return a numpy matrix of the embeddings in the order of the indices. If this is called
@@ -193,7 +208,7 @@ class Vocab(object):
         will always be the same for that string and number of dimensions."""
         if str:
             np.random.seed(hash(strng) % (2**32-1))
-        vec = np.random.rand(dims)
+        vec = np.random.rand(dims).astype(np.float32)
         if as_numpy:
             return vec
         else:
@@ -201,9 +216,9 @@ class Vocab(object):
 
     def zero_vec(self, as_numpy=True):
         if as_numpy:
-            return np.zeros(self.emb_dims)
+            return np.zeros(self.emb_dims, np.float32)
         else:
-            return list(np.zeros(self.emb_dims))
+            return list(np.zeros(self.emb_dims, np.float32))
 
     def add_counts(self, counts):
         """Incrementally add additional counts to the vocabulary. This can be done only before the finish
@@ -351,14 +366,14 @@ class Vocab(object):
                 self.stoe[self.pad_string] = self.zero_vec()
             # now we should have an embedding vector for each word in stoi/itos, so we should now
             # create the actual embeddings matrix
-            self.embeddings = np.zeros((self.n, self.emb_dims))
+            self.embeddings = np.zeros((self.n, self.emb_dims), np.float32)
             for s in self.stoi:
                 idx = self.stoi[s]
                 emb = self.stoe[s]
                 self.embeddings[idx] = emb
         else:  # no emb file, just calculate random embeddings, do this quickly for all we need at once!
             if self.emb_train == "onehot":
-                self.embeddings = np.zeros((self.n, self.emb_dims))
+                self.embeddings = np.zeros((self.n, self.emb_dims), np.float32)
                 fromindex = 0
                 if self.have_pad:
                     fromindex = 1
@@ -367,10 +382,10 @@ class Vocab(object):
                     self.embeddings[i,j] = 1.0
                     j += 1
             else:
-                self.embeddings = np.random.randn(self.n, self.emb_dims)
+                self.embeddings = np.random.rand(self.n, self.emb_dims).astype(np.float32)
                 # override the padding vector with a zero vector if needed:
                 if not self.no_special_indices:
-                    self.embeddings[0] = np.zeros(self.emb_dims)
+                    self.embeddings[0] = np.zeros(self.emb_dims, np.float32)
 
         # print("DEBUG: itos new=", self.itos, file=sys.stderr)
         # print("DEBUG: stoi new=", self.stoi, file=sys.stderr)

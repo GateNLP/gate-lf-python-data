@@ -76,7 +76,7 @@ class Dataset(object):
             for setting in embs_settings:
                 if ":" not in setting:
                     raise Exception("No colon in emb-setting, should be of the form id:dim:train:minfrequ %s" % (setting, ))
-                (embid, embdims, embtrain, embminfreq) = (setting.split(":") + [""]*3)[:4]
+                (embid, embdims, embtrain, embminfreq, embfile) = (setting.split(":") + [""]*4)[:5]
                 tmpsetting = {}
                 if embdims:
                     tmpsetting["emb_dims"] = int(embdims)
@@ -84,6 +84,8 @@ class Dataset(object):
                     tmpsetting["emb_train"] = embtrain
                 if embminfreq:
                     tmpsetting["emb_minfreq"] = int(embminfreq)
+                if embfile:
+                    tmpsetting["emb_file"] = embfile
                 tmpsetting["emb_id"] = embid
                 sdict[embid]=tmpsetting
             for attrinfo in self.meta.get("featureInfo").get("attributes"):
