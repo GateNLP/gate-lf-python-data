@@ -73,8 +73,8 @@ class TestVocab1(unittest.TestCase):
         d1 = {"a": 12, "b": 13, "c": 1, "d": 2, "x": 12}
         v1 = Vocab(d1, max_size=6, emb_minfreq=2, emb_train="yes")
         v1.finish(remove_counts=False)
-        logger.debug("\nTestVocab/test_vocab1: v1.itos=%r" % v1.itos)
-        logger.debug("\nTestVocab/test_vocab1: v1.stoi=%r" % v1.stoi)
+        # logger.info("\nTestVocab/test_vocab1: v1.itos=%r" % v1.itos)
+        # logger.info("\nTestVocab/test_vocab1: v1.stoi=%r" % v1.stoi)
         assert len(v1.itos) == 6
         assert len(v1.stoi) == 6
         assert "a" in v1.stoi
@@ -82,12 +82,12 @@ class TestVocab1(unittest.TestCase):
         assert v1.string2idx("a") == 3
         assert v1.string2idx("b") == 2
         vec = v1.string2onehot("a")
-        assert len(vec) == 6
+        # logger.info("\nTestVocab/test_vocab1: onehot(a)=%r" % vec)
+        assert len(vec) == 5
         assert vec[0] == 0.0
         assert vec[1] == 0.0
-        assert vec[2] == 0.0
-        assert vec[3] == 1.0
-        assert vec[4] == 0.0
+        assert vec[2] == 1.0
+        assert vec[3] == 0.0
         c = v1.count("d")
         assert c == 2
 
@@ -408,7 +408,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         assert len(valset_conv) == 3
         vconvi2 = valset_conv[1]
         # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG: vconvi2=", vconvi2, file=sys.stderr)
-        assert vconvi2 == [[13, 157, 25, 104, 12, 319, 3, 6, 2, 2, 2, 2, 2, 2, 0, 151, 28, 14, 0, 14, 0, 215, 0, 101, 0, 0], 1]
+        assert vconvi2 == [[13, 157, 25, 104, 12, 319, 2, 5, 2, 2, 2, 2, 2, 2, 0, 151, 28, 14, 0, 14, 0, 215, 0, 101, 0, 0], 1]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep
@@ -440,7 +440,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG: !!!batch_conv1[1]=%s" % (batch_conv1[1],), file=sys.stderr)
         assert len(batch_conv1) == 4
         # TODO: check why some indices changed between previously and now and if this is till correct!
-        assert batch_conv1[1] == [[1210, 1495, 9, 796, 23, 3075, 7, 4, 3, 3, 2, 3, 2, 2, 20, 54, 0, 86, 0, 2, 0, 391, 0, 300, 0, 77], 1]
+        assert batch_conv1[1] == [[1210, 1495, 9, 796, 23, 3075, 6, 3, 3, 3, 2, 3, 2, 2, 20, 54, 0, 86, 0, 2, 0, 391, 0, 300, 0, 77], 1]
         bconvb2 = ds.batches_converted(train=True, batch_size=4, reshape=True)
         batch_conv2 = next(iter(bconvb2))
         # print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)

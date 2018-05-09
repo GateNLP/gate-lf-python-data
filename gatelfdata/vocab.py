@@ -82,12 +82,16 @@ class Vocab(object):
         a word not in the vocabulary will result in an exception.
         If pad_index_only is true then no oov index will be used, looking up a word not in the vocabulary raises
         an exception. However, the index 0 is reserved for padding.
+        NOTE: if emb_train is onehot and neither no_special_indices nor pad_index_only is true,
+        for now we automatically use pad_index_only!!!!
         """
         logger = logging.getLogger(__name__)
         if counts:
             self.freqs = Counter(counts)
         else:
             self.freqs = Counter()
+        if emb_train == "onehot" and not no_special_indices:
+            pad_index_only = True
         self.no_special_indices = no_special_indices
         self.pad_index_only = pad_index_only
         self.emb_minfreq = emb_minfreq or 1
@@ -246,12 +250,12 @@ class Vocab(object):
 
         # make sure the padding "word" which may be included in the frequencies gets ignored.
         # we do this by removing the entry at this point, if it exists
-        if not self.no_special_indices and not self.pad_index_only:
+        if self.have_oov:
             if self.oov_string in self.freqs:
                 logger.debug("OOV symbol removed from frequencies, freq=%s, id=%s" %
                             (self.freqs[self.pad_string], self.emb_id))
                 del self.freqs[self.oov_string]
-        if not self.no_special_indices:
+        if self.have_pad:
             if self.pad_string in self.freqs:
                 logger.debug("Pad symbol removed from frequencies, freq=%s, id=%s" %
                             (self.freqs[self.pad_string], self.emb_id))
@@ -333,10 +337,9 @@ class Vocab(object):
                     self.stoi[s] = i
                 self.n = len(self.itos)
             # now if necessary add the padding and oov vectors
-            if not self.no_special_indices and not self.pad_index_only:
-                self.stoe[self.pad_string] = self.zero_vec()
+            if self.have_oov:
                 self.stoe[self.oov_string] = self.rnd_vec(dims=self.emb_dims, strng=self.oov_string)
-            elif self.pad_index_only:
+            if self.have_pad:
                 self.stoe[self.pad_string] = self.zero_vec()
             # now we should have an embedding vector for each word in stoi/itos, so we should now
             # create the actual embeddings matrix
@@ -346,10 +349,15 @@ class Vocab(object):
                 emb = self.stoe[s]
                 self.embeddings[idx] = emb
         else:  # no emb file, just calculate random embeddings, do this quickly for all we need at once!
-            self.embeddings = np.random.randn(self.n, self.emb_dims)
-            # override the padding vector with a zero vector if needed:
-            if not self.no_special_indices:
-                self.embeddings[0] = np.zeros(self.emb_dims)
+            if self.emb_train == "onehot":
+                # the number of dimensions is identical to the number of values we have
+                # if we have a padding symbol, the number of dimensions is one less
+                pass
+            else:
+                self.embeddings = np.random.randn(self.n, self.emb_dims)
+                # override the padding vector with a zero vector if needed:
+                if not self.no_special_indices:
+                    self.embeddings[0] = np.zeros(self.emb_dims)
 
         # print("DEBUG: itos new=", self.itos, file=sys.stderr)
         # print("DEBUG: stoi new=", self.stoi, file=sys.stderr)
@@ -382,27 +390,44 @@ class Vocab(object):
                 raise Exception("String not found in vocab and do not have OOV symbol either: %s" % string)
 
     def string2onehot(self, thestring):
-        """return a one-hot vector for the string"""
-        # TODO: if the string is not found this should instead return the onehot vector of the OOV, if
-        # we do have an OOV symbol
+        """return a one-hot vector for the string. If we have an oov index, return that for unknown words,
+        otherwise raise and exception. If the string is the padding string, return an all zero vector.
+        NOTE: this can be called even if the emb_train parameter was not equal to 'onehot' when creating the
+        vocabulary. In that case, there may be an OOV symbol in the vocab and the onehot vector generated will
+        contain it as its first dimension."""
         if not self.finished:
             raise Exception("Vocab %r has not been finished!" % self)
-        vec = [0.0] * len(self.itos)
+        vec = self.zero_onehotvec()
+        if self.have_pad and thestring == self.pad_string:
+            return vec
         if thestring in self.stoi:
-            vec[self.stoi[thestring]] = 1.0
+            l = self.stoi[thestring]
         elif self.have_oov:
-            vec[self.stoi[self.oov_string]] = 1.0
+            l = self.stoi[self.oov_string]
+        else:
+            raise Exception("String not found in vocab and no OOV symbol: %s" % (thestring,))
+        if self.have_pad:
+            l -= 1
+        vec[l] = 1.0
         return vec
 
     def zero_onehotvec(self):
-        return [0.0] * len(self.itos)
+        l = len(self.itos)
+        if self.have_pad:
+            l -= 1
+        return [0.0] * l
 
     def onehot2string(self, vec):
         if not self.finished:
             raise Exception("Vocab has not been finished!")
-        # check if there is really just one 1.0 in the vector!
-        # TODO
-        idx = vec.index(1.0)   # TODO: this raises an exceptio if there is no 1.0
+        s = sum(vec)
+        if self.have_pad and s == 0.0:
+            return self.pad_string
+        if s != 1.0:
+            raise Exception("Not a proper one-hot vector: %s" % (vec,))
+        idx = vec.index(1.0)
+        if self.have_pad:
+            idx += 1
         return self.itos[idx]
 
     def count(self, strng):
@@ -415,7 +440,7 @@ class Vocab(object):
             else:
                 return 0
         else:
-            raise Exception("Cannot reqtrieve count, data has been removed")
+            raise Exception("Cannot retrieve count, data has been removed")
 
     def __str__(self):
         return self.__repr__()+":nentries=%d" % len(self.stoi)
