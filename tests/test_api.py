@@ -7,19 +7,18 @@ import os
 import sys
 import logging
 
-logger1 = logging.getLogger("gatelfdata")
-logger1.setLevel(logging.INFO)
-streamhandler = logging.StreamHandler()
 formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+streamhandler = logging.StreamHandler()
 streamhandler.setFormatter(formatter)
-logger1.addHandler(streamhandler)
 filehandler = logging.FileHandler("test_api.log")
+logger1 = logging.getLogger("gatelfdata")
+logger1.setLevel(logging.INFO)
+logger1.addHandler(streamhandler)
 logger1.addHandler(filehandler)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(streamhandler)
-filehandler = logging.FileHandler("test_api.log")
 logger.addHandler(filehandler)
 
 TESTDIR = os.path.join(os.path.dirname(__file__), '.')
@@ -95,6 +94,7 @@ class TestVocab1(unittest.TestCase):
     def test_vocab2(self):
         # test using embedding file
         # but first some fake counts for the 20 words in there
+
         cnt1 = {'was': 20, 'as': 10, 'las': 12, 'mas': 1, 'please': 33, 'say': 40, 'sama': 1, 'always': 21, 'mais': 2,
                 'because': 33, 'esta': 5, 'last': 11, 'thanks': 13, 'ass': 13, 'has': 55, 'pas': 1, 'said': 25,
                 'bisa': 2, 'same': 13, 'days': 21}
@@ -104,28 +104,7 @@ class TestVocab1(unittest.TestCase):
         assert len(v1.itos) == len(cnt1)+2
         # we should be able to get all the embedding vectors as one big matrix
         allembs = v1.get_embeddings()
-        # logger.info("allembs=%s" % allembs)
-
-    def test_vocab2(self):
-        # test using embedding file
-        # but first some fake counts for the 20 words in there
-        cnt1 = {'was': 20, 'as': 10, 'las': 12, 'mas': 1, 'please': 33, 'say': 40, 'sama': 1, 'always': 21, 'mais': 2,
-                'because': 33, 'esta': 5, 'last': 11, 'thanks': 13, 'ass': 13, 'has': 55, 'pas': 1, 'said': 25,
-                'bisa': 2, 'same': 13, 'days': 21}
-        v1 = Vocab(cnt1, emb_train="yes", emb_file=EMBFILE20_50TXT, emb_minfreq=3)
-        v1.finish()
-        # this should contain all the entries from cnt1 plus the pad and OOV indices but minus the ones
-        # that got removed because the frequency is <= 2
-        # logger.info("itos=%r" % v1.itos)
-        # logger.info("len(v1.itos)=%s, len(cnt1)+2-5=%s" % (len(v1.itos), len(cnt1)+2-5))
-        assert len(v1.itos) == len(cnt1)+2-5
-        # we should be able to get all the embedding vectors as one big matrix
-        allembs = v1.get_embeddings()
-        # logger.info("allembs shape=%s" % (allembs.shape,))
-        assert allembs.shape[0] == len(cnt1)+2-5
-        assert allembs.shape[1] == 25
-        assert v1.string2idx("dfsdfsdfsdf") == 1
-        # logger.info("allembs=%s" % allembs)
+        logger.debug("allembs=%s" % allembs)
 
 
 class Tests4Batches(unittest.TestCase):
