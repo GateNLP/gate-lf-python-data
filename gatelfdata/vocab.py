@@ -230,6 +230,7 @@ class Vocab(object):
     def finish(self, remove_counts=True):
         """Build the actual vocab instance, it can only be used properly to look-up things after calling
         this method, but no parameters can be changed nor counts added after this."""
+        logger = logging.getLogger(__name__)
         self.check_nonfinished("finish")
 
         # if the emb_train parameter was never set, try to come up with a sensible default here:
@@ -242,6 +243,19 @@ class Vocab(object):
                 self.emb_train = "no"
             else:
                 self.emb_train = "yes"
+
+        # make sure the padding "word" which may be included in the frequencies gets ignored.
+        # we do this by removing the entry at this point, if it exists
+        if not self.no_special_indices and not self.pad_index_only:
+            if self.oov_string in self.freqs:
+                logger.debug("OOV symbol removed from frequencies, freq=%s, id=%s" %
+                            (self.freqs[self.pad_string], self.emb_id))
+                del self.freqs[self.oov_string]
+        if not self.no_special_indices:
+            if self.pad_string in self.freqs:
+                logger.debug("Pad symbol removed from frequencies, freq=%s, id=%s" %
+                            (self.freqs[self.pad_string], self.emb_id))
+                del self.freqs[self.pad_string]
 
         # go through the entries and put all the keys satisfying the emb_minfreq limit into a list
         # put all the words not satisfying the restriction in the filtered_words set
@@ -260,11 +274,8 @@ class Vocab(object):
         if self.no_special_indices:
             pass  # do nothing what we have is all we need
         elif self.pad_index_only:
-            assert self.pad_string not in self.freqs
             self.itos = [self.pad_string] + self.itos
         else:
-            assert self.pad_string not in self.freqs
-            assert self.oov_string not in self.freqs
             self.itos = [self.pad_string] + [self.oov_string] + self.itos
         # trim the itos according to max_size and add any trimmed words to the filtered_words set
         if self.max_size and len(self.itos) > self.max_size:
@@ -277,7 +288,7 @@ class Vocab(object):
             self.stoi[s] = i
         self.n = len(self.itos)
 
-        print("DEBUG: initial itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
+        # print("DEBUG: initial itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
 
         if not self.emb_file and not self.emb_dims:
             # caclulate some embeddings dimensions automatically from the number of words
@@ -349,7 +360,7 @@ class Vocab(object):
         if remove_counts:
             self.freqs = None
         self.finished = True
-        print("DEBUG: final itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
+        # print("DEBUG: final itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
 
     def idx2string(self, idx):
         """Return the string for this index"""

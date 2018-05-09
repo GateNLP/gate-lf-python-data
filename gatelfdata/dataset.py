@@ -64,7 +64,7 @@ class Dataset(object):
         """
         logger = logging.getLogger(__name__)
         self.config = config
-        print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
+        # print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
         Vocabs.init()
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)
@@ -134,18 +134,18 @@ class Dataset(object):
                     self.have_orig_split = True
                     self.orig_train_file = Dataset._modified4meta(self.metafile, name_part="orig.train")
                     self.orig_val_file = Dataset._modified4meta(self.metafile, name_part="orig.val")
-                    logger.info("Found and using original train/validation files %s/%s" %
+                    logger.debug("Found and using original train/validation files %s/%s" %
                                 (self.orig_train_file, self.orig_val_file))
             if os.path.exists(Dataset._modified4meta(self.metafile, name_part="converted.train")):
                 if os.path.exists(Dataset._modified4meta(self.metafile, name_part="converted.val")):
                     self.have_conv_split = True
                     self.converted_train_file = Dataset._modified4meta(self.metafile, name_part="converted.train")
                     self.converted_val_file = Dataset._modified4meta(self.metafile, name_part="converted.val")
-                    logger.info("Found and using converted train/validation files %s/%s" %
+                    logger.debug("Found and using converted train/validation files %s/%s" %
                                 (self.converted_train_file, self.converted_val_file))
             if os.path.exists(Dataset._modified4meta(self.metafile, name_part="converted.data")):
                 self.converted_data_file = Dataset._modified4meta(self.metafile, name_part="converted.data")
-                logger.info("Found and using converted data file %s" % self.converted_data_file)
+                logger.debug("Found and using converted data file %s" % self.converted_data_file)
         # private fields
         self._have_feature_idxs = False
         self._index_feature_idxs = None
