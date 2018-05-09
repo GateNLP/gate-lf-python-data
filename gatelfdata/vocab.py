@@ -292,6 +292,14 @@ class Vocab(object):
             self.stoi[s] = i
         self.n = len(self.itos)
 
+        if self.emb_train == "onehot":
+            # set the emb_dims to the number of values we have, but if we have a padding symbol,
+            # do not include it in the dimensions
+            if self.have_pad:
+                self.emb_dims = self.n - 1
+            else:
+                self.emb_dims = self.n
+
         # print("DEBUG: initial itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
 
         if not self.emb_file and not self.emb_dims:
@@ -350,9 +358,14 @@ class Vocab(object):
                 self.embeddings[idx] = emb
         else:  # no emb file, just calculate random embeddings, do this quickly for all we need at once!
             if self.emb_train == "onehot":
-                # the number of dimensions is identical to the number of values we have
-                # if we have a padding symbol, the number of dimensions is one less
-                pass
+                self.embeddings = np.zeros((self.n, self.emb_dims))
+                fromindex = 0
+                if self.have_pad:
+                    fromindex = 1
+                j = 0
+                for i in range(fromindex, self.n):
+                    self.embeddings[i,j] = 1.0
+                    j += 1
             else:
                 self.embeddings = np.random.randn(self.n, self.emb_dims)
                 # override the padding vector with a zero vector if needed:
@@ -388,6 +401,18 @@ class Vocab(object):
             else:
                 # not a proper word no oov character, for now throw an exception, this should probablly never happen
                 raise Exception("String not found in vocab and do not have OOV symbol either: %s" % string)
+
+    def string2emb(self, string):
+        self.check_finished("string2emb")
+        if self.embeddings is None:
+            raise Exception("Cannot get embedding vector, no embeddings matrix")
+        if string in self.stoi:
+            return self.embeddings[self.stoi[string]]
+        else:
+            if self.have_oov:
+                return self.embeddings[self.stoi[self.oov_string]]
+            else:
+                raise Exception("Cannot return embedding vector, string not found and no OOV symbol: %s" % string)
 
     def string2onehot(self, thestring):
         """return a one-hot vector for the string. If we have an oov index, return that for unknown words,

@@ -6,6 +6,7 @@ import unittest
 import os
 import sys
 import logging
+import numpy
 
 formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
@@ -90,6 +91,53 @@ class TestVocab1(unittest.TestCase):
         assert vec[3] == 0.0
         c = v1.count("d")
         assert c == 2
+
+    def test_vocab1b(self):
+        d1 = {"a": 12, "b": 13, "c": 1, "d": 2, "x": 12}
+        v1 = Vocab(d1, emb_train="onehot")
+        v1.finish(remove_counts=False)
+        logger.debug("\nTestVocab/test_vocab1b: v1.itos=%r" % v1.itos)
+        logger.debug("\nTestVocab/test_vocab1b: v1.stoi=%r" % v1.stoi)
+        emb =v1.string2emb("a")
+        logger.debug("\nTestVocab/test_vocab1b: emb(a)=%r" % emb)
+        assert numpy.array_equal(emb, numpy.array([0.0, 1.0, 0.0, 0.0, 0.0]))
+        assert len(v1.itos) == 6
+        assert len(v1.stoi) == 6
+        assert "a" in v1.stoi
+        assert v1.idx2string(2) == "a"
+        assert v1.string2idx("a") == 2
+        assert v1.string2idx("b") == 1
+        vec = v1.string2onehot("a")
+        logger.debug("\nTestVocab/test_vocab1b: onehot(a)=%r" % vec)
+        assert len(vec) == 5
+        assert vec[0] == 0.0
+        assert vec[1] == 1.0
+        assert vec[2] == 0.0
+        assert vec[3] == 0.0
+
+    def test_vocab1c(self):
+        d1 = {"a": 12, "b": 13, "c": 1, "d": 2, "x": 12}
+        v1 = Vocab(d1, emb_train="onehot", no_special_indices=True)
+        v1.finish(remove_counts=False)
+        logger.debug("\nTestVocab/test_vocab1c: v1.itos=%r" % v1.itos)
+        logger.debug("\nTestVocab/test_vocab1c: v1.stoi=%r" % v1.stoi)
+        emb =v1.string2emb("a")
+        logger.debug("\nTestVocab/test_vocab1c: emb(a)=%r" % emb)
+        assert numpy.array_equal(emb,numpy.array([0.0, 1.0, 0.0, 0.0, 0.0]))
+        assert len(v1.itos) == 5
+        assert len(v1.stoi) == 5
+        assert "a" in v1.stoi
+        assert v1.idx2string(1) == "a"
+        assert v1.string2idx("a") == 1
+        assert v1.string2idx("b") == 0
+        vec = v1.string2onehot("a")
+        logger.debug("\nTestVocab/test_vocab1c: onehot(a)=%r" % vec)
+        assert len(vec) == 5
+        assert vec[0] == 0.0
+        assert vec[1] == 1.0
+        assert vec[2] == 0.0
+        assert vec[3] == 0.0
+
 
     def test_vocab2(self):
         # test using embedding file
