@@ -5,14 +5,14 @@ from . vocabs import Vocabs
 class FeatureNgram(object):
     """Represents an ngram attribute. The value of such an attribute is a list/sequence of
     things that can be represented by embeddings, """
-    def __init__(self, fname, attrinfo, featurestats):
+    def __init__(self, fname, attrinfo, featurestats, vocab):
         """Create the instance from the given meta info of an input feature"""
         logger = logging.getLogger(__name__)
         logger.debug("Creating FeatureNgram instance for fname/attrinfo=%r/%r", fname, attrinfo)
         self.fname = fname
         self.attrinfo = attrinfo
         self.featurestats = featurestats
-        self.vocab = Vocabs.get_vocab(attrinfo)
+        self.vocab = vocab
 
     def type_converted(self):
         return "indexlist"

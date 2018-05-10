@@ -1,10 +1,10 @@
 from collections import Counter
 from . vocab import Vocab
-
+import sys
 
 class TargetNominal(object):
 
-    def __init__(self, meta):
+    def __init__(self, meta, vocabs, targets_need_padding=True):
         self.meta = meta
         self.isSequence = meta["isSequence"]
         if self.isSequence:
@@ -14,8 +14,18 @@ class TargetNominal(object):
         self.stringCounts = targetstats["stringCounts"]
         self.nrTargets = len(self.stringCounts)
         self.freqs = Counter(self.stringCounts)
-        self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_special_indices=True, emb_train="onehot")
+        # so if we need to include a padding character for the targets, we set pad_index_only to True, if not,
+        # we set no_special_indices True
+        nspi = False
+        pio = False
+        if targets_need_padding:
+            pio = True
+        else:
+            nspi = True
+        self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_special_indices=nspi, pad_index_only=pio, emb_train="target")
         self.vocab.finish()
+        vocabs.vocabs["<<TARGET>>"] = self.vocab
+        # print("DEBUG!!!! Created vocab for target, itos is ", self.vocab.itos,  "pad_index_only is", self.vocab.pad_index_only, file=sys.stderr)
         # influences if the conversion will return the index or
         # the onehot vector
         self.as_onehot = False
@@ -37,12 +47,13 @@ class TargetNominal(object):
                 ret = [self.vocab.string2onehot(v) for v in value]
             else:
                 ret = [self.vocab.string2idx(v) for v in value]
-            return ret
         else:
             if as_onehot:
-                return self.vocab.string2onehot(value)
+                ret = self.vocab.string2onehot(value)
             else:
-                return self.vocab.string2idx(value)
+                ret = self.vocab.string2idx(value)
+        # print("DEBUG looking up index for", value,"as_onehot=",as_onehot,"returning",ret,file=sys.stderr)
+        return ret
 
     def idx2label(self, idx):
         return self.vocab.idx2string(idx)

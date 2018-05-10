@@ -3,7 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/gate-lf-python-data.iml" filepath="$PROJECT_DIR$/.idea/gate-lf-python-data.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../gate-lf-pytorch-json/.idea/gate-lf-pytorch-wrapper.iml" filepath="$PROJECT_DIR$/../gate-lf-pytorch-json/.idea/gate-lf-pytorch-wrapper.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../gate-lf-pytorch-json/.idea/gate-lf-pytorch-json.iml" filepath="$PROJECT_DIR$/../gate-lf-pytorch-json/.idea/gate-lf-pytorch-json.iml" />
     </modules>
   </component>
 </project>

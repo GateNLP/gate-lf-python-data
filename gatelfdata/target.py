@@ -9,9 +9,9 @@ class Target(object):
         raise Exception("Target cannot be used directly, use a subclass")
 
     @classmethod
-    def make(cls, meta):
+    def make(cls, meta, vocabs, targets_need_padding=True):
         targetstats = meta["targetStats"]
         stringcounts = targetstats["stringCounts"]
         if len(stringcounts) == 0:
             raise Exception("Only nominal targets supported for now")
-        return TargetNominal(meta)
+        return TargetNominal(meta, vocabs, targets_need_padding=targets_need_padding)
