@@ -170,28 +170,30 @@ class Vocab(object):
         """
         n_lines = 0
         n_added = 0
-        n_vocab = len(self.stoi)
+        n_vocab = len(self.itos)
         if emb_file.endswith(".txt") or emb_file.endswith(".vec") or emb_file.endswith(".txt.gz"):
             if emb_file.endswith(".txt.gz"):
                 reader = gzip.open
             else:
                 reader = open
             # TODO: if emb_file is relative, try to make it relative to the directory where the metafile is
-            logger.info("Loading embeddings for %s from %s" % (self.emb_id, emb_file))
+            logger.info("Loading embeddings for %s from %s (%s words)" % (self.emb_id, emb_file, n_vocab))
             n_expected = 0
             with reader(emb_file, 'rt', encoding="utf-8") as infile:
                 for line in infile:
                     if n_added == n_vocab:
-                        logger.info("Got all embeddings needed, stopping reading the embeddings file")
+                        logger.info("Got all %s embeddings needed, stopping reading the embeddings file" % (n_vocab,))
                         break
                     if n_lines == 0:
                         m = re.match(r'^\s*([0-9]+)\s+([0-9]+)\s*$', line)
                         if m:
                             n_expected = int(m.group(1))
                             self.emb_dims = int(m.group(2))
+                            n_lines += 1
                             continue
                         else:
-                            raise Exception("Embeddings file does not have the expected header line")
+                            raise Exception("Embeddings file does not have the expected header line, but: %s" % line)
+                    n_lines += 1
                     if n_lines % 100000 == 0:
                         logger.info("Read lines from embeddings file: %s of %s, added words: %s of %s" %
                                     (n_lines, n_expected, n_added, n_vocab))
