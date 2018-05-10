@@ -1,5 +1,4 @@
 # https://stackoverflow.com/questions/10971033/backporting-python-3-openencoding-utf-8-to-python-2
-from .feature import Feature
 from .features import Features
 from .featureboolean import FeatureBoolean
 from .featurengram import FeatureNgram

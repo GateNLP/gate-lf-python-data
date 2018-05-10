@@ -1,12 +1,48 @@
-from . feature import Feature
 import sys
 import logging
-from . vocabs import Vocabs
+from . featurenominal1ofk import FeatureNominal1ofk
+from . featurenumeric import FeatureNumeric
+from . featurenominalembs import FeatureNominalEmbs
+from . featureboolean import FeatureBoolean
+from . featurengram import FeatureNgram
 
 
 class Features(object):
 
-    def __init__(self, meta):
+
+    def make_feature(self, fname, datatype, attribute, featurestats, vocabs):
+        """Helper function to create a specific feature gets called as part of __init__"""
+        kind = attribute["featureCode"]
+        logger = logging.getLogger(__name__)
+        logger.debug("Making feature for kind/name/type/attr: %r/%r/%r/%r", kind, fname, datatype, attribute)
+        if kind == "N":
+            # create an ngram feature, based on a simple feature of type nominal
+            ret = FeatureNgram(fname, attribute, featurestats, vocabs.get_vocab(attribute))
+        else:
+            # create a simple feature of the correct type
+            if datatype == "nominal":
+                # create a nominal feature of the correct kind for either
+                # embedding or one-hot coding
+                # This is decided by the setting of the corresponding
+                # embedding definition.
+                emb_train = attribute["codeas"]
+                if emb_train == "onehot":
+                    ret = FeatureNominal1ofk(fname, attribute, featurestats)
+                else:
+                    ret = FeatureNominalEmbs(fname, attribute, featurestats, vocabs.get_vocab(attribute))
+            elif datatype == "numeric":
+                # simple numeric feature
+                ret = FeatureNumeric(fname, attribute, featurestats)
+            elif datatype == "boolean":
+                # simple boolean feature
+                ret = FeatureBoolean(fname, attribute, featurestats)
+            else:
+                raise Exception("Odd datatype: ", datatype)
+        logger.debug("Returning: %r", ret)
+        return ret
+
+
+    def __init__(self, meta, vocabs):
         logger = logging.getLogger(__name__)
         # initialisation consists of going through the meta info and
         # creating all the individual feature instances and storing them
@@ -17,6 +53,7 @@ class Features(object):
         # just a fixed number of simple attributes.
         # meta: either a string or the meta information already read in and parsed.
         self.meta = meta
+        self.vocabs = vocabs
         self.isSequence = meta["isSequence"]
         if self.isSequence:
             self.seq_max = meta["sequLengths.max"]
@@ -35,8 +72,8 @@ class Features(object):
             attrinfo = attrs[attrnr]
             # attrcode = attrinfo.get("code")
             if dt == "nominal":
-                Vocabs.setup_vocab(attrinfo, stats[f["name"]])
-        Vocabs.finish()
+                self.vocabs.setup_vocab(attrinfo, stats[f["name"]])
+        self.vocabs.finish()
         for f in self.meta["features"]:
             dt = f["datatype"]
             attrnr = f["attrid"]
@@ -45,7 +82,7 @@ class Features(object):
             # get a bit more info from the corresponding attribute metadata
             attrinfo = attrs[attrnr]
             fstats = stats[fname]
-            thefeature = Feature.make(fname, dt, attrinfo, fstats)
+            thefeature = self.make_feature(fname, dt, attrinfo, fstats, self.vocabs)
             logger.debug("Features: appending feature=%r", thefeature)
             self.features.append(thefeature)
 

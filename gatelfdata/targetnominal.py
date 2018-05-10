@@ -4,7 +4,7 @@ import sys
 
 class TargetNominal(object):
 
-    def __init__(self, meta, targets_need_padding=True):
+    def __init__(self, meta, vocabs, targets_need_padding=True):
         self.meta = meta
         self.isSequence = meta["isSequence"]
         if self.isSequence:
@@ -24,6 +24,7 @@ class TargetNominal(object):
             nspi = True
         self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_special_indices=nspi, pad_index_only=pio, emb_train="target")
         self.vocab.finish()
+        vocabs.vocabs["<<TARGET>>"] = self.vocab
         # print("DEBUG!!!! Created vocab for target, itos is ", self.vocab.itos,  "pad_index_only is", self.vocab.pad_index_only, file=sys.stderr)
         # influences if the conversion will return the index or
         # the onehot vector

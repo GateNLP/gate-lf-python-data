@@ -65,7 +65,7 @@ class Dataset(object):
         logger = logging.getLogger(__name__)
         self.config = config
         # print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
-        Vocabs.init()
+        self.vocabs = Vocabs()
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)
         # override meta settings for the embeddings
@@ -101,8 +101,8 @@ class Dataset(object):
         # if the files have been moved from their original location
         # self.datafile = self.meta["dataFile"]
         self.orig_data_file = Dataset.data4meta(metafile)
-        self.features = Features(self.meta)
-        self.target = Target.make(self.meta, targets_need_padding=targets_need_padding)
+        self.features = Features(self.meta, self.vocabs)
+        self.target = Target.make(self.meta, self.vocabs, targets_need_padding=targets_need_padding)
         self.isSequence = self.meta["isSequence"]
         if self.isSequence:
             self.maxSequenceLength = self.meta["sequLengths.max"]

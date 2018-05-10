@@ -253,7 +253,7 @@ class Tests4Dataset1test1(unittest.TestCase):
     def test_t2(self):
         # logger.info("Running Tests4Dataset1test1/test_t2")
         ds = Dataset(TESTFILE1)
-        features = Features(ds.meta)
+        features = ds.features
         s = features.size()
         assert s == 34
         it1 = iter(ds.instances_converted(train=False, convert=True))
@@ -314,8 +314,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         ds = Dataset(TESTFILE3)
         logger.debug("TESTFILE3 attrs=%r", ds.meta.get("featureInfo").get("attributes"))
         # Features constructor finishes the vocab, so we need to re-initilize
-        Vocabs.init()
-        features = Features(ds.meta)
+        features = ds.features
         logger.debug("TESTFILE3 features=%r", features)
         it1 = iter(ds.instances_original())
         rec = next(it1)
