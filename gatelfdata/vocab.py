@@ -192,7 +192,9 @@ class Vocab(object):
                             n_lines += 1
                             continue
                         else:
-                            raise Exception("Embeddings file does not have the expected header line, but: %s" % line)
+                            # assume the first line is already an embedding line and get dims from there
+                            self.emb_dims = len(line.split())-1
+                            n_expected = -1
                     n_lines += 1
                     if n_lines % 100000 == 0:
                         logger.info("Read lines from embeddings file: %s of %s, added words: %s of %s" %
@@ -207,7 +209,7 @@ class Vocab(object):
                     else:
                         if word in self.stoi:
                             n_added += 1
-                            self.stoe[word] = self.embs4line(line, toidx, self.embd_dims)
+                            self.stoe[word] = self.embs4line(line, toidx, self.emb_dims)
         elif emb_file.endswith(".vocab") or emb_file.endswith(".npy"):
             raise Exception("TODO: format .vocab/.npy not yet implemented!")
         elif emb_file.endswith(".gensim"):
