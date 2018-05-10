@@ -140,6 +140,17 @@ class Vocab(object):
         if self.finished:
             raise Exception("Cannot call", method, "after the finish() method has been called!")
 
+    def embs4line(self, line, fromidx, dims):
+        embs = []
+        toidx = fromidx
+        for i in range(dims):
+            fromidx = toidx + 1
+            toidx = line.find(" ", fromidx)
+            if toidx < 0:
+                toidx = len(line)
+            embs.append(float(line[fromidx:toidx]))
+            return embs
+
     def load_embeddings(self, emb_file, filterset=set()):
         logger = logging.getLogger(__name__)
         # TODO: on the fly ignore everything not in the vocab
@@ -157,6 +168,9 @@ class Vocab(object):
         NOTE: this will not check if the case conventions or other conventions (e.g. hyphens) for the tokens
         in our vocabulary are compatible with the conventions used for the embeddings.
         """
+        n_lines = 0
+        n_added = 0
+        n_vocab = len(self.stoi)
         if emb_file.endswith(".txt") or emb_file.endswith(".vec") or emb_file.endswith(".txt.gz"):
             if emb_file.endswith(".txt.gz"):
                 reader = gzip.open
@@ -164,35 +178,45 @@ class Vocab(object):
                 reader = open
             # TODO: if emb_file is relative, try to make it relative to the directory where the metafile is
             logger.info("Loading embeddings for %s from %s" % (self.emb_id, emb_file))
+            n_expected = 0
             with reader(emb_file, 'rt', encoding="utf-8") as infile:
-                n_lines = 0
                 for line in infile:
-                    if n_lines == 0 and re.match(r'^\s*[0-9]+\s+[0-9]+\s*$', line):
-                        continue
-                    line = line.rstrip()
-                    fields = re.split(r' +', line)
-                    word = fields[0]
-                    embstr = fields[1:]
-                    embs = [float(e) for e in embstr]
+                    if n_added == n_vocab:
+                        logger.info("Got all embeddings needed, stopping reading the embeddings file")
+                        break
+                    if n_lines == 0:
+                        m = re.match(r'^\s*([0-9]+)\s+([0-9]+)\s*$', line)
+                        if m:
+                            n_expected = int(m.group(1))
+                            self.emb_dims = int(m.group(2))
+                            continue
+                        else:
+                            raise Exception("Embeddings file does not have the expected header line")
+                    if n_lines % 100000 == 0:
+                        logger.info("Read lines from embeddings file: %s of %s, added words: %s of %s" %
+                                    (n_lines, n_expected, n_added, n_vocab))
+                    line = line.strip()
+                    toidx = line.find(" ")
+                    word = line[0:toidx]
                     if filterset:
                         if word not in filterset:
-                            self.stoe[word] = embs
+                            n_added += 1
+                            self.stoe[word] = self.embs4line(line, toidx, self.emb_dims)
                     else:
                         if word in self.stoi:
-                            self.stoe[word] = embs
-                # update the emb_dims setting from the last embedding we read, if any
-                if embs and len(self.stoe) > 0:
-                    self.emb_dims = len(embs)
+                            n_added += 1
+                            self.stoe[word] = self.embs4line(line, toidx, self.embd_dims)
         elif emb_file.endswith(".vocab") or emb_file.endswith(".npy"):
             raise Exception("TODO: format .vocab/.npy not yet implemented!")
         elif emb_file.endswith(".gensim"):
             gensimmodel = gensim.models.KeyedVectors.load(emb_file, mmap='r')
             # now copy over only the embeddings we actually need
             # TODO: !!!!
+            raise Exception(".gensim format for embeddings not yet implemented")
         else:
             raise Exception("Embeddings file must have one of the extensions: .txt, .txt.gz, .vocab, .npy")
         self.embeddings_loaded = True
-        logger.info("Embeddings for %s loaded: %s, dims=%s" % (self.emb_id, len(embs), self.emb_dims))
+        logger.info("Embeddings for %s loaded: %s, dims=%s" % (self.emb_id, n_added, self.emb_dims))
 
     def get_embeddings(self):
         """Return a numpy matrix of the embeddings in the order of the indices. If this is called
