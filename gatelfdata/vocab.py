@@ -349,7 +349,9 @@ class Vocab(object):
             # for a huge number we want somewhere in the 100s.
             # TODO: figure out something reasonable, for now implement something simple
             # this is 3 for 10, 10 for 100, 31 for 1000, 100 for 10k and 316 for 100k
-            self.emb_dims = int(math.sqrt(self.n+2))
+            # TODO: decide on how to calculate the default dimension!
+            # self.emb_dims = int(math.sqrt(self.n+2))
+            self.emb_dims = int(math.log2(self.n)i**1.5)+1
 
         # if needed, load the embeddings: if the set we pass on is empty, only the embeddings in the vocab
         # are loaded, otherwise all embeddings not in the filter set are loaded
