@@ -1,6 +1,5 @@
 import sys
 import logging
-from . featurenominal1ofk import FeatureNominal1ofk
 from . featurenumeric import FeatureNumeric
 from . featurenominalembs import FeatureNominalEmbs
 from . featureboolean import FeatureBoolean
@@ -21,15 +20,11 @@ class Features(object):
         else:
             # create a simple feature of the correct type
             if datatype == "nominal":
-                # create a nominal feature of the correct kind for either
-                # embedding or one-hot coding
-                # This is decided by the setting of the corresponding
-                # embedding definition.
-                emb_train = attribute["codeas"]
-                if emb_train == "onehot":
-                    ret = FeatureNominal1ofk(fname, attribute, featurestats)
-                else:
-                    ret = FeatureNominalEmbs(fname, attribute, featurestats, vocabs.get_vocab(attribute))
+                # create a nominal feature, represented through embeddings or onehot
+                # We represent both by featurenominalembs, both get converted into a value
+                # index initiallly. However for onehot, the embedding vectors are just the onehot
+                # vectors (except for padding which is still an all-zero vector).
+                ret = FeatureNominalEmbs(fname, attribute, featurestats, vocabs.get_vocab(attribute))
             elif datatype == "numeric":
                 # simple numeric feature
                 ret = FeatureNumeric(fname, attribute, featurestats)

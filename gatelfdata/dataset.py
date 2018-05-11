@@ -606,7 +606,6 @@ class Dataset(object):
 
     def reshape_batch(self, instances, as_numpy=False, pad_left=False, from_original=False, pad=True, indep_only=False):
         """Reshape the list of converted instances into what is expected for training on a batch.
-        TODO: currently this only works properly for non-sequence instances: sequence instances need to get padded!
         NOTE: for non-sequence instances, we pad all list-typed features to the maximum length. If from_original
         is true, the padding is done with empty strings, otherwise with integer zeros.
         NOTE: as_numpy=True for from_original=True currently only converts the result of converting

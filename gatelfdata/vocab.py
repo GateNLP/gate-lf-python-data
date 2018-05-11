@@ -230,13 +230,13 @@ class Vocab(object):
 
     @staticmethod
     def rnd_vec(dims, strng=None, as_numpy=True):
-        """Returns a random vector of the given dimensions where each dimension is in [0.0..1.0).
+        """Returns a random vector of the given dimensions where each dimension is from a gaussian(0,1)
         If str is None, the vector is dependent on the current numpy random state. If a string is given,
         then the random state is seeded with a number derived from the string first, so the random vector
         will always be the same for that string and number of dimensions."""
         if str:
             np.random.seed(hash(strng) % (2**32-1))
-        vec = np.random.rand(dims).astype(np.float32)
+        vec = np.random.randn(dims).astype(np.float32)
         if as_numpy:
             return vec
         else:
@@ -401,7 +401,7 @@ class Vocab(object):
                 idx = self.stoi[s]
                 emb = self.stoe[s]
                 self.embeddings[idx] = emb
-        else:  # no emb file, just calculate random embeddings, do this quickly for all we need at once!
+        else:  # no emb file
             if self.emb_train == "onehot":
                 self.embeddings = np.zeros((self.n, self.emb_dims), np.float32)
                 fromindex = 0
@@ -412,7 +412,7 @@ class Vocab(object):
                     self.embeddings[i,j] = 1.0
                     j += 1
             else:
-                self.embeddings = np.random.rand(self.n, self.emb_dims).astype(np.float32)
+                self.embeddings = np.random.randn(self.n, self.emb_dims).astype(np.float32)
                 # override the padding vector with a zero vector if needed:
                 if not self.no_special_indices:
                     self.embeddings[0] = np.zeros(self.emb_dims, np.float32)

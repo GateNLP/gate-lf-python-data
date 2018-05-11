@@ -2,7 +2,6 @@
 from .features import Features
 from .featureboolean import FeatureBoolean
 from .featurengram import FeatureNgram
-from .featurenominal1ofk import FeatureNominal1ofk
 from .featurenominalembs import FeatureNominalEmbs
 from .featurenumeric import FeatureNumeric
 from .dataset import Dataset
