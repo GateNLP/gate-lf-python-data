@@ -42,7 +42,6 @@ class Features(object):
         # initialisation consists of going through the meta info and
         # creating all the individual feature instances and storing them
         # in here in a list.
-        # TODO: do we need to know here if we get a sequence of feature vectors?
         # NOTE: we should go through the actual features, not the attributes, so we do
         # not really need anything that represents an attributelist since this is
         # just a fixed number of simple attributes.
@@ -57,10 +56,8 @@ class Features(object):
         self.features = []
         attrs = self.meta["featureInfo"]["attributes"]
         stats = self.meta["featureStats"]
-        # TODO: we need to handle the Vocab creation differently: instead of creating each
-        # vocab as part of the make, we need to first collect the stats for all
-        # all attrs that share the same vocab so that the final counts and entries for the
-        # vocab are the union of all the individual stats!
+        # The LF metadata is per feature, not per embedding type of the feature, so
+        # we first need to combine the counts per feature for each of the types here.
         for f in self.meta["features"]:
             dt = f["datatype"]
             attrnr = f["attrid"]

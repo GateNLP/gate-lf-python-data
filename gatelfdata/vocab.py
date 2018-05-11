@@ -153,8 +153,6 @@ class Vocab(object):
 
     def load_embeddings(self, emb_file, filterset=set()):
         logger = logging.getLogger(__name__)
-        # TODO: on the fly ignore everything not in the vocab
-        # TODO: this can only be called once we have the vocab: self.have_vocab
         """Load pre-calculated embeddings from the given file. This will update embd_dim as needed!
         Currently only supports text format, compressed text format or a two file format where
         the file with extension ".vocab" has one word per line and the file with extension ".npy"
@@ -346,13 +344,6 @@ class Vocab(object):
         # print("DEBUG: initial itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
 
         if not self.emb_file and not self.emb_dims:
-            # caclulate some embeddings dimensions automatically from the number of words
-            # for only a few words, we essentially want as many dimensions as there are words and
-            # for a huge number we want somewhere in the 100s.
-            # TODO: figure out something reasonable, for now implement something simple
-            # this is 3 for 10, 10 for 100, 31 for 1000, 100 for 10k and 316 for 100k
-            # TODO: decide on how to calculate the default dimension!
-            # self.emb_dims = int(math.sqrt(self.n+2))
             self.emb_dims = int(math.log2(self.n)**1.8)+1
 
         # if needed, load the embeddings: if the set we pass on is empty, only the embeddings in the vocab
