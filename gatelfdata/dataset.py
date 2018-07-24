@@ -87,7 +87,7 @@ class Dataset(object):
                 if embfile:
                     tmpsetting["emb_file"] = embfile
                 tmpsetting["emb_id"] = embid
-                sdict[embid]=tmpsetting
+                sdict[embid] = tmpsetting
             for attrinfo in self.meta.get("featureInfo").get("attributes"):
                 attr_eid = attrinfo.get("emb_id")
                 if attr_eid is not None:

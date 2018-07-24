@@ -117,6 +117,8 @@ class Vocab(object):
         self.embeddings_loaded = False
         self.embeddings = None
         self.oov_emb = None
+        if self.emb_train and self.emb_train not in ["yes", "mapping", "no", "onehot"]:
+            raise Exception("Vocab emb_train must be one of yes, mapping, no, onehot but is "+str(self.emb_train))
         if not self.emb_file and self.emb_train == "mapping":
             raise Exception("Vocab emb_train 'mapping' not usable without embeddings file, "
                             "got emb_train=%s and emb_file=%s" % (self.emb_train, self.emb_file))
