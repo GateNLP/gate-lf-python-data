@@ -7,6 +7,12 @@ author = 'Johann Petrak'
 
 version = '0.1'
 
+html_theme = "classic"
+html_theme_options = {
+    "rightsidebar": "false",
+    "relbarbgcolor": "black"
+}
+
 
 extensions = [
     'sphinx.ext.autodoc',
