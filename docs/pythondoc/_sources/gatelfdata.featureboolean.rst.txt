@@ -1,0 +1,7 @@
+gatelfdata\.featureboolean module
+=================================
+
+.. automodule:: gatelfdata.featureboolean
+    :members:
+    :undoc-members:
+    :show-inheritance:

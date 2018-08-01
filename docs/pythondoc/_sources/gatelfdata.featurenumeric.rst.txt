@@ -1,0 +1,7 @@
+gatelfdata\.featurenumeric module
+=================================
+
+.. automodule:: gatelfdata.featurenumeric
+    :members:
+    :undoc-members:
+    :show-inheritance:

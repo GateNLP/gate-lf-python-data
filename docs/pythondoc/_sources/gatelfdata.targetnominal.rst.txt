@@ -1,0 +1,7 @@
+gatelfdata\.targetnominal module
+================================
+
+.. automodule:: gatelfdata.targetnominal
+    :members:
+    :undoc-members:
+    :show-inheritance:

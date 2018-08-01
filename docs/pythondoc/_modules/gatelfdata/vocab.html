@@ -1,0 +1,604 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>gatelfdata.vocab &#8212; GATE LF Python-Data  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">GATE LF Python-Data  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gatelfdata.vocab</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module for the Vocab class&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">Counter</span><span class="p">,</span> <span class="n">defaultdict</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">gzip</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="c1"># TODO: maybe make use of the gensim library optional?</span>
+<span class="kn">import</span> <span class="nn">gensim</span>
+
+<span class="c1"># OK, the protocol for using this is this:</span>
+<span class="c1"># * create a preliminary instance using &quot;Vocab(...)&quot;</span>
+<span class="c1">#   This can be a completely empty instance or already contain an initial set of counts using counts=</span>
+<span class="c1">#   NOTE: if an embedding file should be used, it should be specified at creation time</span>
+<span class="c1">#   NOTE: emb_train can be &quot;yes&quot;, &quot;mapping&quot;, &quot;no&quot; or &quot;onehot&quot;:</span>
+<span class="c1"># * n times, add to the counts using v.add_counts() and also set embeddings-information using v.set_xxx()</span>
+<span class="c1">#   and other info (e.g. additional symbols use) using v.set_xxx() to override what was specified</span>
+<span class="c1">#   These settings should all be settings which only are relevant once finish() is called</span>
+<span class="c1"># * Once all the counts have been set, finish the datastructure and prepare for use using v.finish()</span>
+<span class="c1"># * only after f.finish() is run the methods for mapping from and to indices, frequencies, or vectors</span>
+<span class="c1">#   are usable, before finish() these methods will abort with an error!</span>
+<span class="c1"># * In general:</span>
+<span class="c1">#   * words which should be in the vocab get mapped to their index</span>
+<span class="c1">#   * words not in the vocab get mapped to the special &quot;OOV&quot; index (1 by default)</span>
+<span class="c1">#   * there is the special PAD symbol which is 0 by default</span>
+<span class="c1"># * Once finish has been completed, a numpy matrix with the embeddings can be retrieved using</span>
+<span class="c1">#   get_embeddings()</span>
+<span class="c1"># * At some point, all the unimportant data can be cleaned up using v.cleanup(embeddings=True,frequencies=True)</span>
+<span class="c1">#   After this, get_embeddings() raises an exception</span>
+
+<span class="c1"># Overview over how indices and embeddings are created using the various configuration settings:</span>
+<span class="c1">#</span>
+<span class="c1"># train=yes, file=None:</span>
+<span class="c1"># * all words in the training set not filtered by minfrequ or maxsize get mapped to an index</span>
+<span class="c1"># * all other words get mapped to the OOV index</span>
+<span class="c1"># * if there are k words, there will be k+2 (OOV, PAD) indices</span>
+<span class="c1"># * Embeddings: all embeddings are some random vectors, PAD is zero</span>
+<span class="c1">#</span>
+<span class="c1"># train=yes, file=embfile</span>
+<span class="c1"># * index for all words in the training set &gt; minfreq, maxsize which are also in the embeddings file</span>
+<span class="c1"># * OOV for all other words (random vector)</span>
+<span class="c1"># * Embeddings: all embeddings from file except OOV (random) and PAD(zero)</span>
+<span class="c1"># * TODO: at some point could average low-freq vectors in the embeddings</span>
+<span class="c1">#</span>
+<span class="c1"># train=no, file=None</span>
+<span class="c1"># * same as for train=yes, file=None</span>
+<span class="c1"># * only pytorch layer works differently</span>
+<span class="c1">#</span>
+<span class="c1"># train=no, file=embfile</span>
+<span class="c1"># * same as for train=yes, file=embfile</span>
+<span class="c1"># * only pytorch layer works differently</span>
+<span class="c1">#</span>
+<span class="c1"># train=mapping, file=None</span>
+<span class="c1"># * signal an ERROR</span>
+<span class="c1">#</span>
+<span class="c1"># train=mapping, file=embfile</span>
+<span class="c1"># * index for all words either in our vocab or in the embeddings file, but NOT in our vocab and &lt; minfreq!</span>
+<span class="c1"># * so we have to load all embeddings from the file, except those which correspond to the words we</span>
+<span class="c1">#   have filtered. In addition, all the words not filtered and not in the embeddings get random vectors,</span>
+<span class="c1">#   and we create an OOV vector as well.</span>
+<span class="c1">#</span>
+<span class="c1"># train=onehot, file=none</span>
+<span class="c1"># * ignore minfreq, dims</span>
+<span class="c1"># * dims is equal to number of values</span>
+<span class="c1"># * no OOV dim, only padding, unless suppressed</span>
+<span class="c1"># * embeddings matrix is diagonal matrix</span>
+
+
+<div class="viewcode-block" id="Vocab"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab">[docs]</a><span class="k">class</span> <span class="nc">Vocab</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;From the counter object, create string to id and id to string</span>
+<span class="sd">    mappings.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">counts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">emb_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">emb_train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">emb_dims</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">emb_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">emb_minfreq</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">no_special_indices</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">pad_index_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">emb_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">pad_string</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">oov_string</span><span class="o">=</span><span class="s2">&quot;&lt;&lt;oov&gt;&gt;&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a vocabulary instance from the counts. If max_size is</span>
+<span class="sd">        given sorts by frequency and only retains the max_size most frequent</span>
+<span class="sd">        ones. Removes everything less the emb_minfreq.</span>
+<span class="sd">        The padding index is always 0, however the string for which the padding index is returned can be set.</span>
+<span class="sd">        The OOV index is always 1, however the string for which the padding index is returned can be set.</span>
+<span class="sd">        If no_special_indices is true, only indices for words are added, not for padding or oov. looking up</span>
+<span class="sd">        a word not in the vocabulary will result in an exception.</span>
+<span class="sd">        If pad_index_only is true then no oov index will be used, looking up a word not in the vocabulary raises</span>
+<span class="sd">        an exception. However, the index 0 is reserved for padding.</span>
+<span class="sd">        NOTE: if emb_train is onehot and neither no_special_indices nor pad_index_only is true,</span>
+<span class="sd">        for now we automatically use pad_index_only!!!!</span>
+<span class="sd">        If emb_dir is not None, then all references to relative (embeddings) files are relative to that</span>
+<span class="sd">        directory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">counts</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">emb_train</span> <span class="o">==</span> <span class="s2">&quot;onehot&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">no_special_indices</span><span class="p">:</span>
+            <span class="n">pad_index_only</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">no_special_indices</span> <span class="o">=</span> <span class="n">no_special_indices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pad_index_only</span> <span class="o">=</span> <span class="n">pad_index_only</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_minfreq</span> <span class="o">=</span> <span class="n">emb_minfreq</span> <span class="ow">or</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span> <span class="o">=</span> <span class="n">max_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span> <span class="o">=</span> <span class="n">emb_dims</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span> <span class="o">=</span> <span class="n">emb_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span> <span class="o">=</span> <span class="n">emb_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="o">=</span> <span class="n">emb_train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_dir</span> <span class="o">=</span> <span class="n">emb_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span> <span class="o">=</span> <span class="n">pad_string</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span> <span class="o">=</span> <span class="n">oov_string</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">finished</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embeddings_loaded</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">oov_emb</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="s2">&quot;mapping&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">,</span> <span class="s2">&quot;onehot&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Vocab emb_train must be one of yes, mapping, no, onehot but is &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="o">==</span> <span class="s2">&quot;mapping&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Vocab emb_train &#39;mapping&#39; not usable without embeddings file, &quot;</span>
+                            <span class="s2">&quot;got emb_train=</span><span class="si">%s</span><span class="s2"> and emb_file=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="o">==</span> <span class="s2">&quot;onehot&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Vocab emb_train &#39;onehot&#39; not usable with embeddings file, &quot;</span>
+                            <span class="s2">&quot;got emb_train=</span><span class="si">%s</span><span class="s2"> and emb_file=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">have_oov</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">have_vocab</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># this indicates if we have already built the final vocab</span>
+        <span class="k">if</span> <span class="n">no_special_indices</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">have_oov</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">pad_index_only</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">have_oov</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="Vocab.check_finished"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.check_finished">[docs]</a>    <span class="k">def</span> <span class="nf">check_finished</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;method&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Cannot call&quot;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="s2">&quot;unless the finish() method has been called first!&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Vocab.check_nonfinished"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.check_nonfinished">[docs]</a>    <span class="k">def</span> <span class="nf">check_nonfinished</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;method&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Cannot call&quot;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="s2">&quot;after the finish() method has been called!&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Vocab.embs4line"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.embs4line">[docs]</a>    <span class="k">def</span> <span class="nf">embs4line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">fromidx</span><span class="p">,</span> <span class="n">dims</span><span class="p">):</span>
+        <span class="n">embs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">toidx</span> <span class="o">=</span> <span class="n">fromidx</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dims</span><span class="p">):</span>
+            <span class="n">fromidx</span> <span class="o">=</span> <span class="n">toidx</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">toidx</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="n">fromidx</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">toidx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">toidx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="n">embs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="n">fromidx</span><span class="p">:</span><span class="n">toidx</span><span class="p">]))</span>
+            <span class="k">return</span> <span class="n">embs</span></div>
+
+<div class="viewcode-block" id="Vocab.load_embeddings"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.load_embeddings">[docs]</a>    <span class="k">def</span> <span class="nf">load_embeddings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">emb_file</span><span class="p">,</span> <span class="n">filterset</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="sd">&quot;&quot;&quot;Load pre-calculated embeddings from the given file. This will update embd_dim as needed!</span>
+<span class="sd">        Currently only supports text format, compressed text format or a two file format where</span>
+<span class="sd">        the file with extension &quot;.vocab&quot; has one word per line and the file with extension &quot;.npy&quot;</span>
+<span class="sd">        is a matrix with as many rows as there are words and as many columns as there are dimensions.</span>
+<span class="sd">        The format is identified by the presence of one of the extensions &quot;.txt&quot;, &quot;.vec&quot;, &quot;.txt.gz&quot;,</span>
+<span class="sd">        or &quot;.vocab&quot; and &quot;.npy&quot; in the emb_file given. (&quot;.vec&quot; is an alias for &quot;.txt&quot;)</span>
+<span class="sd">        The text formats may or may not have a first line that indicates the number of words and</span>
+<span class="sd">        number of dimensions.</span>
+<span class="sd">        If filterset is non-empty, all embeddings not in the set are loaded, otherwise all embeddings</span>
+<span class="sd">        which are also already in the vocabulary are loaded.</span>
+<span class="sd">        NOTE: this will not check if the case conventions or other conventions (e.g. hyphens) for the tokens</span>
+<span class="sd">        in our vocabulary are compatible with the conventions used for the embeddings.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">filterset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">filterset</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">n_lines</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">n_added</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">n_vocab</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.txt&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.vec&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.txt.gz&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.txt.gz&quot;</span><span class="p">):</span>
+                <span class="n">reader</span> <span class="o">=</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">reader</span> <span class="o">=</span> <span class="nb">open</span>
+            <span class="c1"># TODO: if emb_file is relative, try to make it relative to the directory where the metafile is</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading embeddings for </span><span class="si">%s</span><span class="s2"> from </span><span class="si">%s</span><span class="s2"> (</span><span class="si">%s</span><span class="s2"> words)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="n">emb_file</span><span class="p">,</span> <span class="n">n_vocab</span><span class="p">))</span>
+            <span class="n">n_expected</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">with</span> <span class="n">reader</span><span class="p">(</span><span class="n">emb_file</span><span class="p">,</span> <span class="s1">&#39;rt&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">infile</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">infile</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">n_added</span> <span class="o">==</span> <span class="n">n_vocab</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Got all </span><span class="si">%s</span><span class="s2"> embeddings needed, stopping reading the embeddings file&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">n_vocab</span><span class="p">,))</span>
+                        <span class="k">break</span>
+                    <span class="k">if</span> <span class="n">n_lines</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^\s*([0-9]+)\s+([0-9]+)\s*$&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+                            <span class="n">n_expected</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+                            <span class="n">n_lines</span> <span class="o">+=</span> <span class="mi">1</span>
+                            <span class="k">continue</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="c1"># assume the first line is already an embedding line and get dims from there</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">())</span><span class="o">-</span><span class="mi">1</span>
+                            <span class="n">n_expected</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+                    <span class="n">n_lines</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">n_lines</span> <span class="o">%</span> <span class="mi">100000</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Read lines from embeddings file: </span><span class="si">%s</span><span class="s2"> of </span><span class="si">%s</span><span class="s2">, added words: </span><span class="si">%s</span><span class="s2"> of </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
+                                    <span class="p">(</span><span class="n">n_lines</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">n_added</span><span class="p">,</span> <span class="n">n_vocab</span><span class="p">))</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="n">toidx</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span>
+                    <span class="n">word</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">toidx</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">filterset</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">word</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">filterset</span><span class="p">:</span>
+                            <span class="n">n_added</span> <span class="o">+=</span> <span class="mi">1</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embs4line</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">toidx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">:</span>
+                            <span class="n">n_added</span> <span class="o">+=</span> <span class="mi">1</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embs4line</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">toidx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.vocab&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;TODO: format .vocab/.npy not yet implemented!&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.gensim&quot;</span><span class="p">):</span>
+            <span class="n">gensimmodel</span> <span class="o">=</span> <span class="n">gensim</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">KeyedVectors</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">emb_file</span><span class="p">,</span> <span class="n">mmap</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+            <span class="c1"># now copy over only the embeddings we actually need</span>
+            <span class="c1"># TODO: !!!!</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;.gensim format for embeddings not yet implemented&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Embeddings file must have one of the extensions: .txt, .txt.gz, .vocab, .npy&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embeddings_loaded</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Embeddings for </span><span class="si">%s</span><span class="s2"> loaded: </span><span class="si">%s</span><span class="s2">, dims=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="n">n_added</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Vocab.get_embeddings"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.get_embeddings">[docs]</a>    <span class="k">def</span> <span class="nf">get_embeddings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a numpy matrix of the embeddings in the order of the indices. If this is called</span>
+<span class="sd">        before finish() an exception is raised&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_finished</span><span class="p">(</span><span class="s2">&quot;get_embeddings&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span></div>
+
+<div class="viewcode-block" id="Vocab.rnd_vec"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.rnd_vec">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">rnd_vec</span><span class="p">(</span><span class="n">dims</span><span class="p">,</span> <span class="n">strng</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">as_numpy</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns a random vector of the given dimensions where each dimension is from a gaussian(0,1)</span>
+<span class="sd">        If str is None, the vector is dependent on the current numpy random state. If a string is given,</span>
+<span class="sd">        then the random state is seeded with a number derived from the string first, so the random vector</span>
+<span class="sd">        will always be the same for that string and number of dimensions.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="nb">hash</span><span class="p">(</span><span class="n">strng</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="mi">32</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">as_numpy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">vec</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Vocab.zero_vec"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.zero_vec">[docs]</a>    <span class="k">def</span> <span class="nf">zero_vec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">as_numpy</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">as_numpy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Vocab.add_counts"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.add_counts">[docs]</a>    <span class="k">def</span> <span class="nf">add_counts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">counts</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Incrementally add additional counts to the vocabulary. This can be done only before the finish</span>
+<span class="sd">        method is called&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_nonfinished</span><span class="p">(</span><span class="s2">&quot;add_counts&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Vocab.set_emb_minfreq"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.set_emb_minfreq">[docs]</a>    <span class="k">def</span> <span class="nf">set_emb_minfreq</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_freq</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_nonfinished</span><span class="p">(</span><span class="s2">&quot;set_emb_minfreq&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_minfreq</span> <span class="o">=</span> <span class="n">min_freq</span></div>
+
+<div class="viewcode-block" id="Vocab.set_max_size"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.set_max_size">[docs]</a>    <span class="k">def</span> <span class="nf">set_max_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_nonfinished</span><span class="p">(</span><span class="s2">&quot;set_max_size&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span> <span class="o">=</span> <span class="n">max_size</span></div>
+
+<div class="viewcode-block" id="Vocab.set_emb_id"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.set_emb_id">[docs]</a>    <span class="k">def</span> <span class="nf">set_emb_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">embid</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_nonfinished</span><span class="p">(</span><span class="s2">&quot;set_emb_id&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span> <span class="o">=</span> <span class="n">embid</span></div>
+
+<div class="viewcode-block" id="Vocab.set_emb_file"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.set_emb_file">[docs]</a>    <span class="k">def</span> <span class="nf">set_emb_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_nonfinished</span><span class="p">(</span><span class="s2">&quot;set_emb_file&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span> <span class="o">=</span> <span class="n">file</span></div>
+
+<div class="viewcode-block" id="Vocab.set_emb_dims"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.set_emb_dims">[docs]</a>    <span class="k">def</span> <span class="nf">set_emb_dims</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_nonfinished</span><span class="p">(</span><span class="s2">&quot;set_emb_dims&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span> <span class="o">=</span> <span class="n">dim</span></div>
+
+<div class="viewcode-block" id="Vocab.finish"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.finish">[docs]</a>    <span class="k">def</span> <span class="nf">finish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remove_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Build the actual vocab instance, it can only be used properly to look-up things after calling</span>
+<span class="sd">        this method, but no parameters can be changed nor counts added after this.&quot;&quot;&quot;</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_nonfinished</span><span class="p">(</span><span class="s2">&quot;finish&quot;</span><span class="p">)</span>
+
+        <span class="c1"># if the emb_train parameter was never set, try to come up with a sensible default here:</span>
+        <span class="c1"># - if a file is specified, use the setting &quot;no&quot; for now,</span>
+        <span class="c1"># - otherwise use &quot;yes&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span><span class="p">:</span>
+            <span class="c1"># we set our own default here: if a file is specified, then emb_train is no, otherwise</span>
+            <span class="c1"># it is yes.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="o">=</span> <span class="s2">&quot;no&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="o">=</span> <span class="s2">&quot;yes&quot;</span>
+
+        <span class="c1"># make sure the padding &quot;word&quot; which may be included in the frequencies gets ignored.</span>
+        <span class="c1"># we do this by removing the entry at this point, if it exists</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_oov</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;OOV symbol removed from frequencies, freq=</span><span class="si">%s</span><span class="s2">, id=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
+                             <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">))</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Pad symbol removed from frequencies, freq=</span><span class="si">%s</span><span class="s2">, id=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
+                             <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">))</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span><span class="p">]</span>
+
+        <span class="c1"># go through the entries and put all the keys satisfying the emb_minfreq limit into a list</span>
+        <span class="c1"># put all the words not satisfying the restriction in the filtered_words set</span>
+        <span class="n">filtered_words</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_minfreq</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">filtered_words</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="c1"># sort the keys by frequency, then alphabetically in reverse order</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
+        <span class="c1"># add the additional symbols at the beginning, first and always at index 0, the pad symbol, except</span>
+        <span class="c1"># when no_pad is True</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_special_indices</span><span class="p">:</span>
+            <span class="k">pass</span>  <span class="c1"># do nothing what we have is all we need</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_index_only</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">itos</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">itos</span>
+        <span class="c1"># trim the itos according to max_size and add any trimmed words to the filtered_words set</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">:]:</span>
+                <span class="n">filtered_words</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">]</span>
+        <span class="c1"># now create the reverse map</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="o">==</span> <span class="s2">&quot;onehot&quot;</span><span class="p">:</span>
+            <span class="c1"># set the emb_dims to the number of values we have, but if we have a padding symbol,</span>
+            <span class="c1"># do not include it in the dimensions</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span>
+
+        <span class="c1"># print(&quot;DEBUG: initial itos for &quot;,self.emb_id,&quot;is&quot;,self.itos[0:20], file=sys.stderr)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span><span class="o">**</span><span class="mf">1.8</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+
+        <span class="c1"># if needed, load the embeddings: if the set we pass on is empty, only the embeddings in the vocab</span>
+        <span class="c1"># are loaded, otherwise all embeddings not in the filter set are loaded</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_embeddings</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span><span class="p">,</span> <span class="n">filterset</span><span class="o">=</span><span class="n">filtered_words</span><span class="p">)</span>
+            <span class="c1"># the embeddings loaded already have been filtered, but our own vocab may need</span>
+            <span class="c1"># to get cleaned up now: if filtered_words is empty, then we want to keep only</span>
+            <span class="c1"># those words in our vocab which also occur in the embeddings.</span>
+            <span class="c1"># Otherwise (this is when we learn a mapping), we keep all our own vocab words which</span>
+            <span class="c1"># do not occur in the embeddings, but we create some random embedding vectors for them</span>
+            <span class="k">if</span> <span class="n">filtered_words</span><span class="p">:</span>
+                <span class="c1"># ok, we loaded all embeddings except the filtered vocab words, so we first also</span>
+                <span class="c1"># create the random embedding vectors for the words in our vocab not in the embeddings file</span>
+                <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">s</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rnd_vec</span><span class="p">(</span><span class="n">dims</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">,</span> <span class="n">strng</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
+                <span class="c1"># we have also loaded embeddings for words which are not in our vocabulary, we need to add</span>
+                <span class="c1"># those to our index. First create the set of words that need to get added</span>
+                <span class="n">words2add</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">s</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">:</span>
+                        <span class="n">words2add</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+                <span class="c1"># now append those words at the end of the itos array and also add them to the stoi dict</span>
+                <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">words2add</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># we have loaded only those embeddings which are in the vocab, but now we have some</span>
+                <span class="c1"># vocab words left which are not in the embeddings: remove them!</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="k">if</span> <span class="n">w</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span> <span class="ow">or</span> <span class="n">w</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span> <span class="ow">or</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">)</span>
+            <span class="c1"># now if necessary add the padding and oov vectors</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_oov</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rnd_vec</span><span class="p">(</span><span class="n">dims</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">,</span> <span class="n">strng</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_vec</span><span class="p">()</span>
+            <span class="c1"># now we should have an embedding vector for each word in stoi/itos, so we should now</span>
+            <span class="c1"># create the actual embeddings matrix</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">:</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+                <span class="n">emb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">emb</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># no emb file</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="o">==</span> <span class="s2">&quot;onehot&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="n">fromindex</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span><span class="p">:</span>
+                    <span class="n">fromindex</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">fromindex</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+                    <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="c1"># override the padding vector with a zero vector if needed:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_special_indices</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="c1"># print(&quot;DEBUG: itos new=&quot;, self.itos, file=sys.stderr)</span>
+        <span class="c1"># print(&quot;DEBUG: stoi new=&quot;, self.stoi, file=sys.stderr)</span>
+        <span class="c1"># print(&quot;DEBUG: stoe new=&quot;, self.stoe, file=sys.stderr)</span>
+
+        <span class="c1"># cleanup what we do not need any more</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">remove_counts</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">finished</span> <span class="o">=</span> <span class="kc">True</span></div>
+        <span class="c1"># print(&quot;DEBUG: final itos for &quot;,self.emb_id,&quot;is&quot;,self.itos[0:20], file=sys.stderr)</span>
+
+<div class="viewcode-block" id="Vocab.idx2string"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.idx2string">[docs]</a>    <span class="k">def</span> <span class="nf">idx2string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the string for this index&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_finished</span><span class="p">(</span><span class="s2">&quot;idx2string&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">idx</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Vocab: index larger than vocabulary size&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Vocab.string2idx"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.string2idx">[docs]</a>    <span class="k">def</span> <span class="nf">string2idx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">string</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_finished</span><span class="p">(</span><span class="s2">&quot;string2idx&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">string</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="n">string</span><span class="p">]</span>  <span class="c1"># NOTE: the pad string is in there!</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_oov</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># not a proper word no oov character, for now throw an exception, this should probablly never happen</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;String not found in vocab and do not have OOV symbol either: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">string</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Vocab.string2emb"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.string2emb">[docs]</a>    <span class="k">def</span> <span class="nf">string2emb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">string</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_finished</span><span class="p">(</span><span class="s2">&quot;string2emb&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Cannot get embedding vector, no embeddings matrix&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">string</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="n">string</span><span class="p">]]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_oov</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span><span class="p">]]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Cannot return embedding vector, string not found and no OOV symbol: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">string</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Vocab.string2onehot"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.string2onehot">[docs]</a>    <span class="k">def</span> <span class="nf">string2onehot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thestring</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;return a one-hot vector for the string. If we have an oov index, return that for unknown words,</span>
+<span class="sd">        otherwise raise and exception. If the string is the padding string, return an all zero vector.</span>
+<span class="sd">        NOTE: this can be called even if the emb_train parameter was not equal to &#39;onehot&#39; when creating the</span>
+<span class="sd">        vocabulary. In that case, there may be an OOV symbol in the vocab and the onehot vector generated will</span>
+<span class="sd">        contain it as its first dimension.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Vocab </span><span class="si">%r</span><span class="s2"> has not been finished!&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">vec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_onehotvec</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span> <span class="ow">and</span> <span class="n">thestring</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">vec</span>
+        <span class="k">if</span> <span class="n">thestring</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="n">thestring</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_oov</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">oov_string</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;String not found in vocab and no OOV symbol: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">thestring</span><span class="p">,))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="n">vec</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">return</span> <span class="n">vec</span></div>
+
+<div class="viewcode-block" id="Vocab.zero_onehotvec"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.zero_onehotvec">[docs]</a>    <span class="k">def</span> <span class="nf">zero_onehotvec</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="n">l</span></div>
+
+<div class="viewcode-block" id="Vocab.onehot2string"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.onehot2string">[docs]</a>    <span class="k">def</span> <span class="nf">onehot2string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vec</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Vocab has not been finished!&quot;</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span> <span class="ow">and</span> <span class="n">s</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_string</span>
+        <span class="k">if</span> <span class="n">s</span> <span class="o">!=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Not a proper one-hot vector: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">vec</span><span class="p">,))</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pad</span><span class="p">:</span>
+            <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Vocab.count"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.count">[docs]</a>    <span class="k">def</span> <span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strng</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the count/frequency for the given word. NOTE: after finish() this will return 0 for any words</span>
+<span class="sd">        that have been removed because of one of the filter criteria!!&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">:</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">strng</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">c</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">c</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Cannot retrieve count, data has been removed&quot;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;:nentries=</span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Vocab(emb_id=</span><span class="si">%r</span><span class="s2">,emb_train=</span><span class="si">%r</span><span class="s2">,emb_file=</span><span class="si">%r</span><span class="s2">,emb_dims=</span><span class="si">%d</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">GATE LF Python-Data  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, University of Sheffield.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.2.
+    </div>
+  </body>
+</html>

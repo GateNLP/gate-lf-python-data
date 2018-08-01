@@ -1,0 +1,256 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>gatelfdata.features &#8212; GATE LF Python-Data  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">GATE LF Python-Data  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gatelfdata.features</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module for the Features class&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="n">featurenumeric</span> <span class="kn">import</span> <span class="nn">FeatureNumeric</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="n">featurenominalembs</span> <span class="kn">import</span> <span class="nn">FeatureNominalEmbs</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="n">featureboolean</span> <span class="kn">import</span> <span class="nn">FeatureBoolean</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="n">featurengram</span> <span class="kn">import</span> <span class="nn">FeatureNgram</span>
+
+
+<div class="viewcode-block" id="Features"><a class="viewcode-back" href="../../gatelfdata.features.html#gatelfdata.features.Features">[docs]</a><span class="k">class</span> <span class="nc">Features</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+
+<div class="viewcode-block" id="Features.make_feature"><a class="viewcode-back" href="../../gatelfdata.features.html#gatelfdata.features.Features.make_feature">[docs]</a>    <span class="k">def</span> <span class="nf">make_feature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">datatype</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">featurestats</span><span class="p">,</span> <span class="n">vocabs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Helper function to create a specific feature gets called as part of __init__&quot;&quot;&quot;</span>
+        <span class="n">kind</span> <span class="o">=</span> <span class="n">attribute</span><span class="p">[</span><span class="s2">&quot;featureCode&quot;</span><span class="p">]</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Making feature for kind/name/type/attr: </span><span class="si">%r</span><span class="s2">/</span><span class="si">%r</span><span class="s2">/</span><span class="si">%r</span><span class="s2">/</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">datatype</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;N&quot;</span><span class="p">:</span>
+            <span class="c1"># create an ngram feature, based on a simple feature of type nominal</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">FeatureNgram</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">featurestats</span><span class="p">,</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">get_vocab</span><span class="p">(</span><span class="n">attribute</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># create a simple feature of the correct type</span>
+            <span class="k">if</span> <span class="n">datatype</span> <span class="o">==</span> <span class="s2">&quot;nominal&quot;</span><span class="p">:</span>
+                <span class="c1"># create a nominal feature, represented through embeddings or onehot</span>
+                <span class="c1"># We represent both by featurenominalembs, both get converted into a value</span>
+                <span class="c1"># index initiallly. However for onehot, the embedding vectors are just the onehot</span>
+                <span class="c1"># vectors (except for padding which is still an all-zero vector).</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="n">FeatureNominalEmbs</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">featurestats</span><span class="p">,</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">get_vocab</span><span class="p">(</span><span class="n">attribute</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">datatype</span> <span class="o">==</span> <span class="s2">&quot;numeric&quot;</span><span class="p">:</span>
+                <span class="c1"># simple numeric feature</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="n">FeatureNumeric</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">featurestats</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">datatype</span> <span class="o">==</span> <span class="s2">&quot;boolean&quot;</span><span class="p">:</span>
+                <span class="c1"># simple boolean feature</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="n">FeatureBoolean</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">featurestats</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Odd datatype: &quot;</span><span class="p">,</span> <span class="n">datatype</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Returning: </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ret</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">vocabs</span><span class="p">):</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="c1"># initialisation consists of going through the meta info and</span>
+        <span class="c1"># creating all the individual feature instances and storing them</span>
+        <span class="c1"># in here in a list.</span>
+        <span class="c1"># NOTE: we should go through the actual features, not the attributes, so we do</span>
+        <span class="c1"># not really need anything that represents an attributelist since this is</span>
+        <span class="c1"># just a fixed number of simple attributes.</span>
+        <span class="c1"># meta: either a string or the meta information already read in and parsed.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span> <span class="o">=</span> <span class="n">vocabs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isSequence</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;isSequence&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isSequence</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">seq_max</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sequLengths.max&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">seq_avg</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sequLengths.mean&quot;</span><span class="p">]</span>
+        <span class="c1"># now we have the meta, create the list of features</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;featureInfo&quot;</span><span class="p">][</span><span class="s2">&quot;attributes&quot;</span><span class="p">]</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;featureStats&quot;</span><span class="p">]</span>
+        <span class="c1"># The LF metadata is per feature, not per embedding type of the feature, so</span>
+        <span class="c1"># we first need to combine the counts per feature for each of the types here.</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]:</span>
+            <span class="n">dt</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;datatype&quot;</span><span class="p">]</span>
+            <span class="n">attrnr</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;attrid&quot;</span><span class="p">]</span>
+            <span class="n">attrinfo</span> <span class="o">=</span> <span class="n">attrs</span><span class="p">[</span><span class="n">attrnr</span><span class="p">]</span>
+            <span class="c1"># attrcode = attrinfo.get(&quot;code&quot;)</span>
+            <span class="k">if</span> <span class="n">dt</span> <span class="o">==</span> <span class="s2">&quot;nominal&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="o">.</span><span class="n">setup_vocab</span><span class="p">(</span><span class="n">attrinfo</span><span class="p">,</span> <span class="n">stats</span><span class="p">[</span><span class="n">f</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]:</span>
+            <span class="n">dt</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;datatype&quot;</span><span class="p">]</span>
+            <span class="n">attrnr</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;attrid&quot;</span><span class="p">]</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+            <span class="c1"># attrkind = f[&quot;kind&quot;]</span>
+            <span class="c1"># get a bit more info from the corresponding attribute metadata</span>
+            <span class="n">attrinfo</span> <span class="o">=</span> <span class="n">attrs</span><span class="p">[</span><span class="n">attrnr</span><span class="p">]</span>
+            <span class="n">fstats</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="n">fname</span><span class="p">]</span>
+            <span class="n">thefeature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_feature</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">attrinfo</span><span class="p">,</span> <span class="n">fstats</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Features: appending feature=</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">thefeature</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">thefeature</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_convert_featurevec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">valuelist</span><span class="p">,</span> <span class="n">idxs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">idxs</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valuelist</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Wrong number of values passed, expected&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">),</span> <span class="s2">&quot;got&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">valuelist</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">idxs</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">idxs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">valuelist</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Wrong number of idxs passed, got&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">idxs</span><span class="p">),</span> <span class="s2">&quot;but got values:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">valuelist</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">idxs</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">idxs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Wrong number of idxs passed, got&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">idxs</span><span class="p">),</span> <span class="s2">&quot;but got features:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">idxs</span><span class="p">:</span>
+            <span class="n">valuelist</span> <span class="o">=</span> <span class="p">[</span><span class="n">valuelist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idxs</span><span class="p">]</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idxs</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="n">i</span><span class="p">](</span><span class="n">valuelist</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">normalize</span><span class="o">=</span><span class="n">normalize</span><span class="p">)</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">values</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">valuelist</span><span class="p">,</span> <span class="n">idxs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># For a feature vector:</span>
+        <span class="c1"># this will go through each input and run it through the stored feature</span>
+        <span class="c1"># instance, and the values will get put into the result list and returned</span>
+        <span class="c1"># Note that for ngram attributes, the &quot;value&quot; to put into the list is itself a list</span>
+        <span class="c1"># (of embedding indices).</span>
+        <span class="c1"># For a sequence of feature vectors: each feature vector gets converted</span>
+        <span class="c1"># in the normal way, targets as well</span>
+        <span class="c1"># NOTE: not sure yet how to handle nominals that are onehot encoded! In some cases</span>
+        <span class="c1"># we want to instances in some we want the vectors .. see featurenominal1ofk</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isSequence</span><span class="p">:</span>
+            <span class="n">out_indep</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">fv</span> <span class="ow">in</span> <span class="n">valuelist</span><span class="p">:</span>
+                <span class="n">out_indep</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_convert_featurevec</span><span class="p">(</span><span class="n">fv</span><span class="p">,</span> <span class="n">idxs</span><span class="o">=</span><span class="n">idxs</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">out_indep</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_featurevec</span><span class="p">(</span><span class="n">valuelist</span><span class="p">,</span> <span class="n">idxs</span><span class="o">=</span><span class="n">idxs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">values</span>
+
+    <span class="k">def</span> <span class="nf">__call__OLD</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">valuelist</span><span class="p">,</span> <span class="n">idxs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># For a feature vector:</span>
+        <span class="c1"># this will go through each input and run it through the stored feature</span>
+        <span class="c1"># instance, and the values will get put into the result list and returned</span>
+        <span class="c1"># Note that for ngram attributes, the &quot;value&quot; to put into the list is itself a list</span>
+        <span class="c1"># (of embedding indices).</span>
+        <span class="c1"># For a sequence of feature vectors: will return a list/vector</span>
+        <span class="c1"># for each feature where each element corresponds to a sequence element</span>
+        <span class="c1"># So the representation gets changed from a list of feature vectors</span>
+        <span class="c1"># of values to a list of values for each feature</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isSequence</span><span class="p">:</span>
+            <span class="c1"># for now we do this in an easy to understand but maybe slow way:</span>
+            <span class="c1"># first go convert each of the feature vectors in the sequence</span>
+            <span class="c1"># then convert the resulting list of lists</span>
+            <span class="n">seqofvecs</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">valuelist</span><span class="p">:</span>
+                <span class="n">vals4featurevec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_featurevec</span><span class="p">(</span><span class="n">el</span><span class="p">,</span> <span class="n">idxs</span><span class="o">=</span><span class="n">idxs</span><span class="p">)</span>
+                <span class="n">seqofvecs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vals4featurevec</span><span class="p">)</span>
+            <span class="c1"># now each element in sequofvecs should have as many elements</span>
+            <span class="c1"># as there are features, just transpose that matrix</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">map</span><span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">seqofvecs</span><span class="p">))]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_featurevec</span><span class="p">(</span><span class="n">valuelist</span><span class="p">,</span> <span class="n">idxs</span><span class="o">=</span><span class="n">idxs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">values</span>
+
+<div class="viewcode-block" id="Features.size"><a class="viewcode-back" href="../../gatelfdata.features.html#gatelfdata.features.Features.size">[docs]</a>    <span class="k">def</span> <span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">fl</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">]</span>
+        <span class="k">return</span> <span class="s2">&quot;Features(features=</span><span class="si">%r</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="n">fl</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">fl</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">]</span>
+        <span class="k">return</span> <span class="s2">&quot;Features(&quot;</span><span class="o">+</span><span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fl</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;)&quot;</span>
+
+<div class="viewcode-block" id="Features.pretty_print"><a class="viewcode-back" href="../../gatelfdata.features.html#gatelfdata.features.Features.pretty_print">[docs]</a>    <span class="k">def</span> <span class="nf">pretty_print</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Features:&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  &quot;</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">GATE LF Python-Data  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, University of Sheffield.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.2.
+    </div>
+  </body>
+</html>

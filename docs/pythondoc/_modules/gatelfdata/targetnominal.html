@@ -1,0 +1,159 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>gatelfdata.targetnominal &#8212; GATE LF Python-Data  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">GATE LF Python-Data  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gatelfdata.targetnominal</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module for the TargetNominal class&quot;&quot;&quot;</span>
+
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="n">vocab</span> <span class="kn">import</span> <span class="nn">Vocab</span>
+
+<div class="viewcode-block" id="TargetNominal"><a class="viewcode-back" href="../../gatelfdata.targetnominal.html#gatelfdata.targetnominal.TargetNominal">[docs]</a><span class="k">class</span> <span class="nc">TargetNominal</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">vocabs</span><span class="p">,</span> <span class="n">targets_need_padding</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isSequence</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;isSequence&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isSequence</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">seq_max</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sequLengths.max&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">seq_avg</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;sequLengths.mean&quot;</span><span class="p">]</span>
+        <span class="n">targetstats</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;targetStats&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stringCounts</span> <span class="o">=</span> <span class="n">targetstats</span><span class="p">[</span><span class="s2">&quot;stringCounts&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nrTargets</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stringCounts</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stringCounts</span><span class="p">)</span>
+        <span class="c1"># so if we need to include a padding character for the targets, we set pad_index_only to True, if not,</span>
+        <span class="c1"># we set no_special_indices True</span>
+        <span class="n">nspi</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">pio</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">targets_need_padding</span><span class="p">:</span>
+            <span class="n">pio</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">nspi</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vocab</span> <span class="o">=</span> <span class="n">Vocab</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">,</span> <span class="n">emb_id</span><span class="o">=</span><span class="s2">&quot;&lt;&lt;TARGET&gt;&gt;&quot;</span><span class="p">,</span> <span class="n">no_special_indices</span><span class="o">=</span><span class="n">nspi</span><span class="p">,</span> <span class="n">pad_index_only</span><span class="o">=</span><span class="n">pio</span><span class="p">,</span> <span class="n">emb_train</span><span class="o">=</span><span class="s2">&quot;no&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vocab</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
+        <span class="n">vocabs</span><span class="o">.</span><span class="n">vocabs</span><span class="p">[</span><span class="s2">&quot;&lt;&lt;TARGET&gt;&gt;&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vocab</span>
+        <span class="c1"># print(&quot;DEBUG!!!! Created vocab for target, itos is &quot;, self.vocab.itos,  &quot;pad_index_only is&quot;, self.vocab.pad_index_only, file=sys.stderr)</span>
+        <span class="c1"># influences if the conversion will return the index or</span>
+        <span class="c1"># the onehot vector</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">as_onehot</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="TargetNominal.set_as_onehot"><a class="viewcode-back" href="../../gatelfdata.targetnominal.html#gatelfdata.targetnominal.TargetNominal.set_as_onehot">[docs]</a>    <span class="k">def</span> <span class="nf">set_as_onehot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Influence hot the original class label is converted. If</span>
+<span class="sd">        the flag is False, then the string is converted to the corresponding</span>
+<span class="sd">        string index, otherwise, to the corresponding onehot vector.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">as_onehot</span> <span class="o">=</span> <span class="n">flag</span></div>
+
+<div class="viewcode-block" id="TargetNominal.zero_onehotvec"><a class="viewcode-back" href="../../gatelfdata.targetnominal.html#gatelfdata.targetnominal.TargetNominal.zero_onehotvec">[docs]</a>    <span class="k">def</span> <span class="nf">zero_onehotvec</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns a zero vector with as many 0 as the one-hot representation would have.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vocab</span><span class="o">.</span><span class="n">zero_onehotvec</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">as_onehot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">as_onehot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_onehot</span> <span class="ow">or</span> <span class="n">as_onehot</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isSequence</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">as_onehot</span><span class="p">:</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">vocab</span><span class="o">.</span><span class="n">string2onehot</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">vocab</span><span class="o">.</span><span class="n">string2idx</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">as_onehot</span><span class="p">:</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vocab</span><span class="o">.</span><span class="n">string2onehot</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vocab</span><span class="o">.</span><span class="n">string2idx</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="c1"># print(&quot;DEBUG looking up index for&quot;, value,&quot;as_onehot=&quot;,as_onehot,&quot;returning&quot;,ret,file=sys.stderr)</span>
+        <span class="k">return</span> <span class="n">ret</span>
+
+<div class="viewcode-block" id="TargetNominal.idx2label"><a class="viewcode-back" href="../../gatelfdata.targetnominal.html#gatelfdata.targetnominal.TargetNominal.idx2label">[docs]</a>    <span class="k">def</span> <span class="nf">idx2label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vocab</span><span class="o">.</span><span class="n">idx2string</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;TargetNominal()&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;TargetNominal()&quot;</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">GATE LF Python-Data  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, University of Sheffield.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.2.
+    </div>
+  </body>
+</html>

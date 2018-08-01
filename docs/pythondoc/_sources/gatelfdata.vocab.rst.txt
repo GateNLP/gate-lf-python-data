@@ -1,0 +1,7 @@
+gatelfdata\.vocab module
+========================
+
+.. automodule:: gatelfdata.vocab
+    :members:
+    :undoc-members:
+    :show-inheritance:

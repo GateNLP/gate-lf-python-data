@@ -1,0 +1,252 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>gatelfdata.vocab module &#8212; GATE LF Python-Data  documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="gatelfdata.vocabs module" href="gatelfdata.vocabs.html" />
+    <link rel="prev" title="gatelfdata.targetnominal module" href="gatelfdata.targetnominal.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="gatelfdata.vocabs.html" title="gatelfdata.vocabs module"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="gatelfdata.targetnominal.html" title="gatelfdata.targetnominal module"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">GATE LF Python-Data  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="gatelfdata.html" accesskey="U">gatelfdata package</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-gatelfdata.vocab">
+<span id="gatelfdata-vocab-module"></span><h1>gatelfdata.vocab module<a class="headerlink" href="#module-gatelfdata.vocab" title="Permalink to this headline">¶</a></h1>
+<p>Module for the Vocab class</p>
+<dl class="class">
+<dt id="gatelfdata.vocab.Vocab">
+<em class="property">class </em><code class="descclassname">gatelfdata.vocab.</code><code class="descname">Vocab</code><span class="sig-paren">(</span><em>counts=None</em>, <em>max_size=None</em>, <em>emb_id=None</em>, <em>emb_train=None</em>, <em>emb_dims=0</em>, <em>emb_file=None</em>, <em>emb_minfreq=1</em>, <em>no_special_indices=False</em>, <em>pad_index_only=False</em>, <em>emb_dir=None</em>, <em>pad_string=’‘</em>, <em>oov_string=’&lt;&lt;oov&gt;&gt;’</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>From the counter object, create string to id and id to string
+mappings.</p>
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.add_counts">
+<code class="descname">add_counts</code><span class="sig-paren">(</span><em>counts</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.add_counts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.add_counts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Incrementally add additional counts to the vocabulary. This can be done only before the finish
+method is called</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.check_finished">
+<code class="descname">check_finished</code><span class="sig-paren">(</span><em>method=’method’</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.check_finished"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.check_finished" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.check_nonfinished">
+<code class="descname">check_nonfinished</code><span class="sig-paren">(</span><em>method=’method’</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.check_nonfinished"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.check_nonfinished" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.count">
+<code class="descname">count</code><span class="sig-paren">(</span><em>strng</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.count"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the count/frequency for the given word. NOTE: after finish() this will return 0 for any words
+that have been removed because of one of the filter criteria!!</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.embs4line">
+<code class="descname">embs4line</code><span class="sig-paren">(</span><em>line</em>, <em>fromidx</em>, <em>dims</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.embs4line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.embs4line" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.finish">
+<code class="descname">finish</code><span class="sig-paren">(</span><em>remove_counts=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.finish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.finish" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build the actual vocab instance, it can only be used properly to look-up things after calling
+this method, but no parameters can be changed nor counts added after this.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.get_embeddings">
+<code class="descname">get_embeddings</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.get_embeddings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.get_embeddings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a numpy matrix of the embeddings in the order of the indices. If this is called
+before finish() an exception is raised</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.idx2string">
+<code class="descname">idx2string</code><span class="sig-paren">(</span><em>idx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.idx2string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.idx2string" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the string for this index</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.load_embeddings">
+<code class="descname">load_embeddings</code><span class="sig-paren">(</span><em>emb_file</em>, <em>filterset=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.load_embeddings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.load_embeddings" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.onehot2string">
+<code class="descname">onehot2string</code><span class="sig-paren">(</span><em>vec</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.onehot2string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.onehot2string" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="gatelfdata.vocab.Vocab.rnd_vec">
+<em class="property">static </em><code class="descname">rnd_vec</code><span class="sig-paren">(</span><em>dims</em>, <em>strng=None</em>, <em>as_numpy=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.rnd_vec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.rnd_vec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a random vector of the given dimensions where each dimension is from a gaussian(0,1)
+If str is None, the vector is dependent on the current numpy random state. If a string is given,
+then the random state is seeded with a number derived from the string first, so the random vector
+will always be the same for that string and number of dimensions.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.set_emb_dims">
+<code class="descname">set_emb_dims</code><span class="sig-paren">(</span><em>dim</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.set_emb_dims"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.set_emb_dims" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.set_emb_file">
+<code class="descname">set_emb_file</code><span class="sig-paren">(</span><em>file</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.set_emb_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.set_emb_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.set_emb_id">
+<code class="descname">set_emb_id</code><span class="sig-paren">(</span><em>embid</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.set_emb_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.set_emb_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.set_emb_minfreq">
+<code class="descname">set_emb_minfreq</code><span class="sig-paren">(</span><em>min_freq=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.set_emb_minfreq"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.set_emb_minfreq" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.set_max_size">
+<code class="descname">set_max_size</code><span class="sig-paren">(</span><em>max_size=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.set_max_size"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.set_max_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.string2emb">
+<code class="descname">string2emb</code><span class="sig-paren">(</span><em>string</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.string2emb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.string2emb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.string2idx">
+<code class="descname">string2idx</code><span class="sig-paren">(</span><em>string</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.string2idx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.string2idx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.string2onehot">
+<code class="descname">string2onehot</code><span class="sig-paren">(</span><em>thestring</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.string2onehot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.string2onehot" title="Permalink to this definition">¶</a></dt>
+<dd><p>return a one-hot vector for the string. If we have an oov index, return that for unknown words,
+otherwise raise and exception. If the string is the padding string, return an all zero vector.
+NOTE: this can be called even if the emb_train parameter was not equal to ‘onehot’ when creating the
+vocabulary. In that case, there may be an OOV symbol in the vocab and the onehot vector generated will
+contain it as its first dimension.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.zero_onehotvec">
+<code class="descname">zero_onehotvec</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.zero_onehotvec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.zero_onehotvec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.zero_vec">
+<code class="descname">zero_vec</code><span class="sig-paren">(</span><em>as_numpy=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.zero_vec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.zero_vec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="gatelfdata.targetnominal.html"
+                        title="previous chapter">gatelfdata.targetnominal module</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="gatelfdata.vocabs.html"
+                        title="next chapter">gatelfdata.vocabs module</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/gatelfdata.vocab.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="gatelfdata.vocabs.html" title="gatelfdata.vocabs module"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="gatelfdata.targetnominal.html" title="gatelfdata.targetnominal module"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">GATE LF Python-Data  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="gatelfdata.html" >gatelfdata package</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, University of Sheffield.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.2.
+    </div>
+  </body>
+</html>

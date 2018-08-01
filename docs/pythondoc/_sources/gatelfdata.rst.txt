@@ -1,0 +1,26 @@
+gatelfdata package
+==================
+
+Submodules
+----------
+
+.. toctree::
+
+   gatelfdata.dataset
+   gatelfdata.featureboolean
+   gatelfdata.featurengram
+   gatelfdata.featurenominalembs
+   gatelfdata.featurenumeric
+   gatelfdata.features
+   gatelfdata.target
+   gatelfdata.targetnominal
+   gatelfdata.vocab
+   gatelfdata.vocabs
+
+Module contents
+---------------
+
+.. automodule:: gatelfdata
+    :members:
+    :undoc-members:
+    :show-inheritance:

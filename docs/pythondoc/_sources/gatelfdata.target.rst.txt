@@ -1,0 +1,7 @@
+gatelfdata\.target module
+=========================
+
+.. automodule:: gatelfdata.target
+    :members:
+    :undoc-members:
+    :show-inheritance:

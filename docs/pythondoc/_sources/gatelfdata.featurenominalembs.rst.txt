@@ -1,0 +1,7 @@
+gatelfdata\.featurenominalembs module
+=====================================
+
+.. automodule:: gatelfdata.featurenominalembs
+    :members:
+    :undoc-members:
+    :show-inheritance:
