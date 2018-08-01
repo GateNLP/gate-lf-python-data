@@ -1,5 +1,6 @@
 # Library for handling the (dense) data created by the GATE LearningFramework plugin
 
+
 A library for simplifying reading and converting the JSON files created by the
 GATE LearningFramework plugin.
 
@@ -11,6 +12,9 @@ Main functionality:
 * Split the data into a validation set and a training set
 * Iterate over batches of data, either in original format or in converted format
 * Reshape batches into "features-first" format
+
+For more information and the full Python modules/classes documentation see 
+https://gatenlp.github.io/gate-lf-python-data/
 
 ## Requirements
 
