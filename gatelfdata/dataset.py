@@ -1,3 +1,5 @@
+"""Module for the Dataset class"""
+
 import json
 import numpy as np
 from io import open    # use with open("asas",'rt',encoding='utf-8')

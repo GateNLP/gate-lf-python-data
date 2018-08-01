@@ -1,4 +1,5 @@
-from . vocabs import Vocabs
+"""Module for the FeatureNominalEmbs class"""
+
 import logging
 
 # This represents a simple nominal (string) attribute that should

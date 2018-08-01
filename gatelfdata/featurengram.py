@@ -1,5 +1,6 @@
+"""Module for the FeatureNGram class"""
+
 import logging
-from . vocabs import Vocabs
 
 
 class FeatureNgram(object):
@@ -15,9 +16,12 @@ class FeatureNgram(object):
         self.vocab = vocab
 
     def type_converted(self):
+        """Return the name of the type of information of the feature, once it is converted to
+        internal format."""
         return "indexlist"
 
     def type_original(self):
+        """Return the name of the type of information of the original feature."""
         return "ngram"
 
     def __call__(self, value, normalize=None):
@@ -39,4 +43,3 @@ class FeatureNgram(object):
 
     def __repr__(self):
         return "FeatureNgram(name=%r)" % self.fname
-

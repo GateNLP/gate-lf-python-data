@@ -1,3 +1,5 @@
+"""Module for the Features class"""
+
 import sys
 import logging
 from . featurenumeric import FeatureNumeric

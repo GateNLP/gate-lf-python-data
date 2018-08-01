@@ -1,8 +1,11 @@
+"""Module for the TargetNominal class"""
+
+
 from collections import Counter
 from . vocab import Vocab
-import sys
 
 class TargetNominal(object):
+
 
     def __init__(self, meta, vocabs, targets_need_padding=True):
         self.meta = meta

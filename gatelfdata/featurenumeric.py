@@ -1,3 +1,5 @@
+"""Module for the FeatureNumeric class"""
+
 class FeatureNumeric(object):
 
     def __init__(self, fname, attrinfo, featurestats):

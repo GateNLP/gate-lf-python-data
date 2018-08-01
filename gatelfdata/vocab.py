@@ -1,14 +1,13 @@
+"""Module for the Vocab class"""
+
 from collections import Counter, defaultdict
 import logging
 import gzip
 import re
 import numpy as np
-import sys
 import math
 # TODO: maybe make use of the gensim library optional?
 import gensim
-from gensim.models.word2vec import Vocab as GensimVocab
-from gensim.models.word2vec import Word2Vec
 
 # OK, the protocol for using this is this:
 # * create a preliminary instance using "Vocab(...)"
@@ -153,7 +152,7 @@ class Vocab(object):
             embs.append(float(line[fromidx:toidx]))
             return embs
 
-    def load_embeddings(self, emb_file, filterset=set()):
+    def load_embeddings(self, emb_file, filterset=None):
         logger = logging.getLogger(__name__)
         """Load pre-calculated embeddings from the given file. This will update embd_dim as needed!
         Currently only supports text format, compressed text format or a two file format where
@@ -168,6 +167,8 @@ class Vocab(object):
         NOTE: this will not check if the case conventions or other conventions (e.g. hyphens) for the tokens
         in our vocabulary are compatible with the conventions used for the embeddings.
         """
+        if filterset is None:
+            filterset = set()
         n_lines = 0
         n_added = 0
         n_vocab = len(self.itos)
@@ -296,12 +297,12 @@ class Vocab(object):
         if self.have_oov:
             if self.oov_string in self.freqs:
                 logger.debug("OOV symbol removed from frequencies, freq=%s, id=%s" %
-                            (self.freqs[self.pad_string], self.emb_id))
+                             (self.freqs[self.pad_string], self.emb_id))
                 del self.freqs[self.oov_string]
         if self.have_pad:
             if self.pad_string in self.freqs:
                 logger.debug("Pad symbol removed from frequencies, freq=%s, id=%s" %
-                            (self.freqs[self.pad_string], self.emb_id))
+                             (self.freqs[self.pad_string], self.emb_id))
                 del self.freqs[self.pad_string]
 
         # go through the entries and put all the keys satisfying the emb_minfreq limit into a list
@@ -402,7 +403,7 @@ class Vocab(object):
                     fromindex = 1
                 j = 0
                 for i in range(fromindex, self.n):
-                    self.embeddings[i,j] = 1.0
+                    self.embeddings[i, j] = 1.0
                     j += 1
             else:
                 self.embeddings = np.random.randn(self.n, self.emb_dims).astype(np.float32)

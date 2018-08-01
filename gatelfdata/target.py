@@ -1,3 +1,5 @@
+"""Module for the Target class"""
+
 from . targetnominal import TargetNominal
 
 

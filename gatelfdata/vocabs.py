@@ -1,7 +1,8 @@
-from . vocab import Vocab
+"""Module for the Voabs class"""
+
 import logging
 from collections import defaultdict
-import sys
+from . vocab import Vocab
 
 class Vocabs(object):
     """A class for managing all the vocab instances that are needed by features"""
@@ -36,6 +37,7 @@ class Vocabs(object):
             vocab.finish()
 
     def get_vocab(self, attrinfo_or_embid):
+        """Return a vocab instance for the given attribute name or embedding id."""
         if isinstance(attrinfo_or_embid, dict):
             emb_id = attrinfo_or_embid.get("emb_id")
         else:

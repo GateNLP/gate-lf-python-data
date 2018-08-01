@@ -1,5 +1,6 @@
+"""Module for the FeatureBoolean class"""
+
 import logging
-# This represents a simple boolean attribute
 
 
 class FeatureBoolean(object):
@@ -22,17 +23,15 @@ class FeatureBoolean(object):
     def bool2float(val):
         if val:
             return float(1.0)
-        else:
-            return float(0.0)
+        return float(0.0)
 
     def __call__(self, valueorlist, normalize=None):
         """Converts True to float(1.0) and False to float(0.0)"""
         if normalize:
             raise Exception("Normalization not supported for boolean features")
-        if type(valueorlist) == list:
+        if isinstance(valueorlist, list):
             return [FeatureBoolean.bool2float(x) for x in valueorlist]
-        else:
-            return valueorlist
+        return valueorlist
 
     def __str__(self):
         return "FeatureBoolean(name=%s" % self.fname
