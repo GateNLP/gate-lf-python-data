@@ -1,6 +1,7 @@
 from . vocab import Vocab
 import logging
 from collections import defaultdict
+import sys
 
 class Vocabs(object):
     """A class for managing all the vocab instances that are needed by features"""

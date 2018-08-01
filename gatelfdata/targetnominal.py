@@ -22,7 +22,7 @@ class TargetNominal(object):
             pio = True
         else:
             nspi = True
-        self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_special_indices=nspi, pad_index_only=pio, emb_train="target")
+        self.vocab = Vocab(self.freqs, emb_id="<<TARGET>>", no_special_indices=nspi, pad_index_only=pio, emb_train="no")
         self.vocab.finish()
         vocabs.vocabs["<<TARGET>>"] = self.vocab
         # print("DEBUG!!!! Created vocab for target, itos is ", self.vocab.itos,  "pad_index_only is", self.vocab.pad_index_only, file=sys.stderr)
