@@ -22,7 +22,7 @@ class FeatureNumeric(object):
         """Either one of 'meanvar', 'minmax' or a function that takes and returns a float or
         one of the normalization methods of this class."""
         if isinstance(normalize, str):
-            self.normalizer = self._noramlizer4str(normalize)
+            self.normalizer = self._normalizer4str(normalize)
         else:
             self.normalizer = normalize
 
