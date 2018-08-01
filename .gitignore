@@ -131,3 +131,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# data files for testing and debugging
+/data-*
