@@ -1,4 +1,3 @@
-from builtins import *
 from collections import Counter, defaultdict
 import logging
 import gzip
@@ -8,7 +7,8 @@ import sys
 import math
 # TODO: maybe make use of the gensim library optional?
 import gensim
-from gensim.models.word2vec import Vocab, Word2Vec
+from gensim.models.word2vec import Vocab as GensimVocab
+from gensim.models.word2vec import Word2Vec
 
 # OK, the protocol for using this is this:
 # * create a preliminary instance using "Vocab(...)"
