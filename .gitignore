@@ -136,3 +136,9 @@ ENV/
 /data-*
 
 /pylint.out.txt
+/tmp-*
+/debug-*
+
+/docs/.jekyll-metadata
+/docs/Gemfile.lock
+/docs/_site

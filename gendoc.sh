@@ -1,12 +1,14 @@
 #!/bin/bash
 
 export PYTHONPATH=`pwd`
-rm -rf ./doc-sphinx
-rm -rf ./doc-html
-mkdir doc-sphinx
-mkdir doc-html
+SPHDIR=./tmp-doc-sphinx
+HTMDIR=./tmp-doc-html
+rm -rf $SPHDIR
+rm -rf $HTMDIR
+mkdir $SPHDIR
+mkdir $HTMDIR
 # cp sphinx-config/index.rst doc-sphinx
-sphinx-apidoc -e -f -H "GATE LF Python Data (gatelfdata)" -A "Johann Petrak" -V "0.1" --ext-autodoc --ext-githubpages -o doc-sphinx gatelfdata
-mv doc-sphinx/modules.rst doc-sphinx/index.rst
-sphinx-build -b html -c sphinx-config doc-sphinx doc-html 
-cp -r doc-html/* docs/pythondoc
+sphinx-apidoc -e -f -H "GATE LF Python Data (gatelfdata)" -A "Johann Petrak" -V "0.1" --ext-autodoc --ext-githubpages -o $SPHDIR gatelfdata
+mv $SPHDIR/modules.rst $SPHDIR/index.rst
+sphinx-build -b html -c sphinx-config $SPHDIR $HTMDIR
+cp -r $HTMDIR/* docs/pythondoc/
