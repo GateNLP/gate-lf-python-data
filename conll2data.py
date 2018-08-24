@@ -13,6 +13,9 @@ import argparse
 from collections import Counter
 import re
 import json
+import statistics
+import os
+import datetime
 
 meta_info = {
     "featureNames": ["Token┆string╬A"],
@@ -62,7 +65,7 @@ meta_info = {
                 "datatype": "nominal",
                 "code": "A",
                 "alphabet": "null",
-                "emb_dims": "null",
+                "emb_dims": 0,
                 "name": "",
                 "feature": "string",
                 "featureId": 0,
@@ -136,7 +139,7 @@ def normalize_token(token):
 def out_instance(tokens, targets, outs):
     # also update the sequence lengths
     instance = [
-        [[tokens]],
+        [[token] for token in tokens],
         targets
     ]
     global seqLengths
@@ -154,7 +157,7 @@ with open(outdata_name, "tw", encoding="utf-8") as outds:
             if not line:
                 if not have_docstring:
                     out_instance(tokens, targets, outds)
-
+                    linesWritten += 1
                     tokens = []
                     targets = []
                 have_docstring = False
@@ -169,11 +172,22 @@ with open(outdata_name, "tw", encoding="utf-8") as outds:
     # this should not be necessary but just to be safe:
     if tokens:
         # output the instance
+        # increment linesWritten
         # gather statistics
         pass
 
 # calculate final stats, set remaining fields, then output meta file
-
+meta_info["featureStats"]["Token┆string╬A"]["stringCounts"] = stringCounts_token
+meta_info["featureStats"]["Token┆string╬A"]["n"] = n_token
+meta_info["targetStats"]["stringCounts"] = stringCounts_target
+meta_info["targetStats"]["n"] = n_target
+meta_info["sequLengths.mean"] = sum(seqLengths)/len(seqLengths)
+meta_info["sequLengths.min"]  =  min(seqLengths)
+meta_info["sequLengths.max"] = max(seqLengths)
+meta_info["sequLengths.variance"] = statistics.pvariance(seqLengths)
+meta_info["linesWritten"] = linesWritten
+meta_info["dataFile"] = os.path.abspath(outdata_name)
+meta_info["savedOn"] = datetime.datetime.today().strftime('%Y-%m-%d')
 with open(outmeta_name, "tw", encoding="utf-8") as outms:
     json.dump(meta_info, outms)
 # DONE, output some infos ...

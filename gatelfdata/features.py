@@ -7,6 +7,8 @@ from . featurenominalembs import FeatureNominalEmbs
 from . featureboolean import FeatureBoolean
 from . featurengram import FeatureNgram
 
+logger = logging.getLogger(__name__)
+
 
 class Features(object):
 
@@ -26,6 +28,7 @@ class Features(object):
                 # We represent both by featurenominalembs, both get converted into a value
                 # index initiallly. However for onehot, the embedding vectors are just the onehot
                 # vectors (except for padding which is still an all-zero vector).
+                logger.debug("About to create feature, vocabs is %s" % (vocabs,))
                 ret = FeatureNominalEmbs(fname, attribute, featurestats, vocabs.get_vocab(attribute))
             elif datatype == "numeric":
                 # simple numeric feature
@@ -38,9 +41,7 @@ class Features(object):
         logger.debug("Returning: %r", ret)
         return ret
 
-
     def __init__(self, meta, vocabs):
-        logger = logging.getLogger(__name__)
         # initialisation consists of going through the meta info and
         # creating all the individual feature instances and storing them
         # in here in a list.
