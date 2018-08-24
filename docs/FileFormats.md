@@ -1,4 +1,4 @@
-# File Formata
+# File Formats
 
 The library expects the data in two files, located in the same directory and
 their names only differing in the extension:
