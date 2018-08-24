@@ -1,4 +1,4 @@
-# gate-lf-python-data - A Library for using JSON data from the GATE LearningFramework
+# gate-lf-python-data - A Library for using JSON data from the GATE LearningFramework in Python
 
 This is a python library that deals with using training files created in "dense JSON format" 
 by the GATE LearningFramework plugin. The library is meant to get used by other Python libraries
