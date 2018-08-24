@@ -24,4 +24,5 @@ Requirements:
 ## Overview of the documentation:
 
 * [Usage Examples](UsageExamples)
+* [File Formats](FileFormats)
 * [The Generated Python Documentation](pythondoc)
