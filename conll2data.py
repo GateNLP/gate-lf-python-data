@@ -144,7 +144,7 @@ def out_instance(tokens, targets, outs):
     ]
     global seqLengths
     seqLengths.append(len(tokens))
-    print(instance, file=outs)
+    print(json.dumps(instance), file=outs)
 
 linesWritten = 0  # number of instances
 with open(outdata_name, "tw", encoding="utf-8") as outds:
