@@ -49,7 +49,7 @@ class Dataset(object):
         with open(metafile, "rt", encoding="utf-8") as inp:
             return json.load(inp)
 
-    def __init__(self, metafile, reuse_files=False, config=None, targets_need_padding=True):
+    def __init__(self, metafile, reuse_files=False, config=None, targets_need_padding=False):
         """Creating an instance will read the metadata and create the converters for
         converting the instances from the original data format (which contains the original
         values and strings) to a converted representation where strings are replaced by
@@ -250,7 +250,8 @@ class Dataset(object):
         return [indep_converted, dep_converted]
 
     def split(self, outdir=None, validation_size=None, validation_part=0.1, random_seed=1,
-              convert=False, keep_orig=False, reuse_files=False):
+              convert=False, keep_orig=False, reuse_files=False,
+              validation_file=None):
         """This splits the original file into an actual training file and a validation set file.
         This creates two new files in the same location as the original files, with the "data"/"meta"
         parts of the name replaced with "val" for validation and "train" for training. If converted is
@@ -263,8 +264,12 @@ class Dataset(object):
         If random_seed is set to 0 or None, the random seed generator does not get initialized.
         If reuse_files is True and the files that would have been created are already there
         the method does nothing for that file, assuming, but not checking that the contents is correct.
+        If validation_file is not none, then validation_size and validation_part are ignored and
+        the whole original file is used as training file, the given validation_file is expected to
+        be a data file that fits the meta, and the content of the validation file is used.
         """
         logger = logging.getLogger(__name__)
+        print("DEBUG: called split with validation_size=", validation_size, "validation_part=", validation_part)
         valindices = set()
         if validation_size or validation_part:
             if random_seed:
@@ -282,7 +287,7 @@ class Dataset(object):
             logger.debug("convert_to_file, nInst=%s, valsize=%s, choices=%s" % (self.nInstances, valsize, len(choices)))
             for choice in choices:
                 valindices.add(choice)
-            # print("DEBUG: valindices=%s" % valindices, file=sys.stderr)
+            print("DEBUG: nr valindices=%s" % len(valindices), file=sys.stderr)
         else:
             # we just keep the empy valindices set
             pass
@@ -317,22 +322,50 @@ class Dataset(object):
         # if we already have everything from a previous run, do nothing
         if not outorigtrain and not outorigval and not outconvval and not outconvtrain:
             return
-        for line in self.instances_as_string():
-            if convert:
-                converted = self.convert_instance(line)
-            else:
-                converted = None
-            if i in valindices:
-                if outorigval:
-                    print(line, file=outorigval, end="")
-                if outconvval:
-                    print(converted, file=outconvval)
-            else:
+
+        # if we actually need to split, run the following
+        if validation_file is None:
+            for line in self.instances_as_string():
+                if convert:
+                    converted = self.convert_instance(line)
+                else:
+                    converted = None
+                if i in valindices:
+                    if outorigval:
+                        print(line, file=outorigval, end="")
+                    if outconvval:
+                        print(converted, file=outconvval)
+                else:
+                    if outorigtrain:
+                        print(line, file=outorigtrain, end="")
+                    if outconvtrain:
+                        print(converted, file=outconvtrain)
+                i += 1
+        else:
+            # we have a separate validation file: in this case, we copy the original file
+            # to the outorigintrain, if necessary, write the converted original file to
+            # outconvtrain, if necessary, then do the same with the separate validation file
+            for line in self.instances_as_string():
+                if convert:
+                    converted = self.convert_instance(line)
+                else:
+                    converted = None
                 if outorigtrain:
                     print(line, file=outorigtrain, end="")
                 if outconvtrain:
                     print(converted, file=outconvtrain)
-            i += 1
+                i += 1
+            for line in self.instances_as_string(file=validation_file):
+                if convert:
+                    converted = self.convert_instance(line)
+                else:
+                    converted = None
+                if outorigtrain:
+                    print(line, file=outorigtrain, end="")
+                if outconvtrain:
+                    print(converted, file=outconvtrain)
+                i += 1
+
         if outorigtrain:
             outorigtrain.close()
         if outorigval:
@@ -551,7 +584,9 @@ class Dataset(object):
                     if target and target.as_onehot:
                         pad_value = target.zero_onehotvec()
                     else:
-                        pad_value = 0
+                        # TODO: this was 0 previously, but we use -1 here directly for sequences,
+                        # when our target vocab does NOT use separate padding symbol!
+                        pad_value = -1
                 if pad:
                     Dataset.pad_matrix_(out_dep, tosize=seq_max_len, pad_left=pad_left, pad_value=pad_value)
             # to pad the features, we need to know the type of the feature and if we have original format:

@@ -13,8 +13,13 @@ if len(sys.argv) != 2:
 file = sys.argv[1]
 
 ds = Dataset(file)
-
+print("Dataset loaded, isSequence=%s, nFeatures=%s, nAttrs=%s, nInstances=%s" % (ds.isSequence, ds.nFeatures, ds.nAttrs, ds.nInstances))
 # Now list all the vocabs
 vocabs = ds.vocabs
 for name, vocab in vocabs.vocabs.items():
     print("Name=%s, vocab=%r" % (name, vocab, ))
+
+# test what the encoding for some specific values would be
+instance = [[["EU"], ["rejects"], ["German"], ["call"], ["to"], ["boycott"], ["British"], ["lamb"], ["."]], ["I-ORG", "O", "I-MISC", "O", "O", "O", "I-MISC", "O", "O"]]
+print("indices for indep=%s" % ds.convert_indep(instance[0]))
+print("indices for dep=%s" % ds.convert_dep(instance[1]))

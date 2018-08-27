@@ -7,7 +7,7 @@ from . vocab import Vocab
 class TargetNominal(object):
 
 
-    def __init__(self, meta, vocabs, targets_need_padding=True):
+    def __init__(self, meta, vocabs, targets_need_padding=False):
         self.meta = meta
         self.isSequence = meta["isSequence"]
         if self.isSequence:

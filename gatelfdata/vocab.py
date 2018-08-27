@@ -315,6 +315,7 @@ class Vocab(object):
             else:
                 filtered_words.add(s)
         # sort the keys by frequency, then alphabetically in reverse order
+        # (so to achieve this sort, sort first alphabetically, then by frequency)
         self.itos = sorted(self.itos)
         self.itos = sorted(self.itos, reverse=True, key=lambda x: self.freqs[x])
         # add the additional symbols at the beginning, first and always at index 0, the pad symbol, except
@@ -506,8 +507,14 @@ class Vocab(object):
         else:
             raise Exception("Cannot retrieve count, data has been removed")
 
+    def size(self):
+        """Return the total number of entries in the vocab, including any special symbols"""
+        return len(self.itos)
+
     def __str__(self):
         return self.__repr__()+":nentries=%d" % len(self.stoi)
 
     def __repr__(self):
-        return "Vocab(emb_id=%r,emb_train=%r,emb_file=%r,emb_dims=%d)" % (self.emb_id, self.emb_train, self.emb_file, self.emb_dims)
+        tmp_entries = [self.itos[i] for i in range(min(len(self.itos),20))]
+        return "Vocab(n=%d,emb_id=%r,emb_train=%r,emb_file=%r,emb_dims=%d,entries=%s)" % \
+               (len(self.stoi), self.emb_id, self.emb_train, self.emb_file, self.emb_dims, tmp_entries)
