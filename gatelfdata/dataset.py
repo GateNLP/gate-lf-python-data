@@ -11,6 +11,14 @@ from .target import Target
 from .vocabs import Vocabs
 import sys
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+streamhandler = logging.StreamHandler(stream=sys.stderr)
+formatter = logging.Formatter(
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
+
 
 class Dataset(object):
     """Class representing training data present in the meta and data files.
@@ -63,7 +71,6 @@ class Dataset(object):
         * embs=id:dims:train:minfreq,id:dims:drain:minfreq - a list of settings each for some id,
         specifying the dimensions, train mode, and minimum frequency.
         """
-        logger = logging.getLogger(__name__)
         self.config = config
         # print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
         self.vocabs = Vocabs()
@@ -268,29 +275,32 @@ class Dataset(object):
         the whole original file is used as training file, the given validation_file is expected to
         be a data file that fits the meta, and the content of the validation file is used.
         """
-        logger = logging.getLogger(__name__)
-        print("DEBUG: called split with validation_size=", validation_size, "validation_part=", validation_part)
+        print("DEBUG: called split with validation_size=", validation_size, "validation_part=", validation_part, "validation_file=", validation_file, file=sys.stderr)
         valindices = set()
-        if validation_size or validation_part:
-            if random_seed:
-                np.random.seed(random_seed)
-            if validation_size:
-                valsize = int(validation_size)
+
+        # the following is only relevant if we do not have a defined validation file
+        if not validation_file:
+            if validation_size or validation_part:
+                if random_seed:
+                    np.random.seed(random_seed)
+                if validation_size:
+                    valsize = int(validation_size)
+                else:
+                    valsize = int(self.nInstances * validation_part)
+                if valsize <= 1 or valsize > int(self.nInstances / 2.0):
+                    raise Exception('Validation set size should not be less than 1 or more '
+                                    'than half the data, but is %s (n=%s)' % (valsize, self.nInstances))
+                # now get valsize integers from the range 0 to nInstances-1: these are the instance indices
+                # we want to reserve for the validation set
+                choices = np.random.choice(self.nInstances, size=valsize, replace=False)
+                logger.debug("convert_to_file, nInst=%s, valsize=%s, choices=%s" % (self.nInstances, valsize, len(choices)))
+                for choice in choices:
+                    valindices.add(choice)
+                print("DEBUG: nr valindices=%s" % len(valindices), file=sys.stderr)
             else:
-                valsize = int(self.nInstances * validation_part)
-            if valsize <= 1 or valsize > int(self.nInstances / 2.0):
-                raise Exception('Validation set size should not be less than 1 or more '
-                                'than half the data, but is %s (n=%s)' % (valsize, self.nInstances))
-            # now get valsize integers from the range 0 to nInstances-1: these are the instance indices
-            # we want to reserve for the validation set
-            choices = np.random.choice(self.nInstances, size=valsize, replace=False)
-            logger.debug("convert_to_file, nInst=%s, valsize=%s, choices=%s" % (self.nInstances, valsize, len(choices)))
-            for choice in choices:
-                valindices.add(choice)
-            print("DEBUG: nr valindices=%s" % len(valindices), file=sys.stderr)
-        else:
-            # we just keep the empy valindices set
-            pass
+                # we just keep the empy valindices set
+                pass
+
         origtrainfile = self.modified4meta(name_part="orig.train", dirname=outdir)
         origvalfile = self.modified4meta(name_part="orig.val", dirname=outdir)
         convtrainfile = self.modified4meta(name_part="converted.train", dirname=outdir)
@@ -319,7 +329,10 @@ class Dataset(object):
         # outconvtrain, outconvval), file=sys.stderr)
         self.outdir = outdir
         i = 0
-        # if we already have everything from a previous run, do nothing
+        n_train = 0
+        n_val = 0
+
+        # if we do not need to do anything, reurn
         if not outorigtrain and not outorigval and not outconvval and not outconvtrain:
             return
 
@@ -335,11 +348,13 @@ class Dataset(object):
                         print(line, file=outorigval, end="")
                     if outconvval:
                         print(converted, file=outconvval)
+                    n_val += 1
                 else:
                     if outorigtrain:
                         print(line, file=outorigtrain, end="")
                     if outconvtrain:
                         print(converted, file=outconvtrain)
+                    n_train += 1
                 i += 1
         else:
             # we have a separate validation file: in this case, we copy the original file
@@ -354,18 +369,21 @@ class Dataset(object):
                     print(line, file=outorigtrain, end="")
                 if outconvtrain:
                     print(converted, file=outconvtrain)
+                n_train += 1
                 i += 1
             for line in self.instances_as_string(file=validation_file):
                 if convert:
                     converted = self.convert_instance(line)
                 else:
                     converted = None
-                if outorigtrain:
-                    print(line, file=outorigtrain, end="")
-                if outconvtrain:
-                    print(converted, file=outconvtrain)
+                if outorigval:
+                    print(line, file=outorigval, end="")
+                if outconvval:
+                    print(converted, file=outconvval)
+                n_val += 1
                 i += 1
 
+        logger.info("Created training/validation files %s / %s instances (total %s)" % (n_train, n_val, i))
         if outorigtrain:
             outorigtrain.close()
         if outorigval:
@@ -429,7 +447,6 @@ class Dataset(object):
                 self.parent = parent
 
             def __iter__(self):
-                logger = logging.getLogger(__name__)
                 with open(self.datafile, "rt", encoding="utf=8") as inp:
                     for line in inp:
                         instance = json.loads(line)
@@ -669,7 +686,6 @@ class Dataset(object):
                 self.parent = parent
 
             def __iter__(self):
-                logger = logging.getLogger(__name__)
                 with open(self.file, "rt", encoding="utf-8") as inp:
                     while True:
                         collect = []
@@ -727,7 +743,6 @@ class Dataset(object):
                 self.parent = parent
 
             def __iter__(self):
-                logger = logging.getLogger(__name__)
                 with open(self.convertedfile, "rt", encoding="utf-8") as inp:
                     while True:
                         collect = []

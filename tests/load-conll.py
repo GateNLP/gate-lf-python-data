@@ -23,3 +23,9 @@ for name, vocab in vocabs.vocabs.items():
 instance = [[["EU"], ["rejects"], ["German"], ["call"], ["to"], ["boycott"], ["British"], ["lamb"], ["."]], ["I-ORG", "O", "I-MISC", "O", "O", "O", "I-MISC", "O", "O"]]
 print("indices for indep=%s" % ds.convert_indep(instance[0]))
 print("indices for dep=%s" % ds.convert_dep(instance[1]))
+
+# test how "splitting" with an existing validation file works
+# ds.split(convert=True, validation_file="conll-en-ner-trainsubset.data.json")
+# valset = ds.validation_set_converted(as_batch=True)
+# print("Valset is ", valset)
+
