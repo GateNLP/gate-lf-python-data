@@ -275,7 +275,8 @@ class Dataset(object):
         the whole original file is used as training file, the given validation_file is expected to
         be a data file that fits the meta, and the content of the validation file is used.
         """
-        print("DEBUG: called split with validation_size=", validation_size, "validation_part=", validation_part, "validation_file=", validation_file, file=sys.stderr)
+        logger.debug("Called split with validation_size=%s validation_part=%s validation_file=%s",
+                     (validation_size, validation_part, validation_file))
         valindices = set()
 
         # the following is only relevant if we do not have a defined validation file
@@ -296,7 +297,6 @@ class Dataset(object):
                 logger.debug("convert_to_file, nInst=%s, valsize=%s, choices=%s" % (self.nInstances, valsize, len(choices)))
                 for choice in choices:
                     valindices.add(choice)
-                print("DEBUG: nr valindices=%s" % len(valindices), file=sys.stderr)
             else:
                 # we just keep the empy valindices set
                 pass
@@ -514,7 +514,10 @@ class Dataset(object):
         lists contains as many elements as there are instances. These elements in turn are lists, representing the
         values of the feature for each feature vector in the sequence for the instance.
         The feature_types list must be specified if is_sequence is True, in that case, n_features is not needed.
-        If indep_only is True, this will not expect targets and only reshape the independent features."""
+        If indep_only is True, this will not expect targets and only reshape the independent features.
+        IMPORTANT: this pads all independent features based on their type, with indices getting padded using 0
+        and all dependent indices using -1!!! If target is specified, the targets are represented by a
+        onehot vector instead."""
 
         if feature_types:
             n_features = len(feature_types)
