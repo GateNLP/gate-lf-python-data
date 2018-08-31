@@ -1,6 +1,15 @@
 """Module for the Target class"""
-
+import sys
+import logging
 from . targetnominal import TargetNominal
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+streamhandler = logging.StreamHandler(stream=sys.stderr)
+formatter = logging.Formatter(
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
 
 
 class Target(object):

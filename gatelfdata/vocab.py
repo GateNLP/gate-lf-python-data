@@ -8,6 +8,16 @@ import numpy as np
 import math
 # TODO: maybe make use of the gensim library optional?
 import gensim
+import sys
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+streamhandler = logging.StreamHandler(stream=sys.stderr)
+formatter = logging.Formatter(
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
+
 
 # OK, the protocol for using this is this:
 # * create a preliminary instance using "Vocab(...)"
@@ -90,7 +100,6 @@ class Vocab(object):
         If emb_dir is not None, then all references to relative (embeddings) files are relative to that
         directory.
         """
-        logger = logging.getLogger(__name__)
         if counts:
             self.freqs = Counter(counts)
         else:
@@ -153,7 +162,6 @@ class Vocab(object):
             return embs
 
     def load_embeddings(self, emb_file, filterset=None):
-        logger = logging.getLogger(__name__)
         """Load pre-calculated embeddings from the given file. This will update embd_dim as needed!
         Currently only supports text format, compressed text format or a two file format where
         the file with extension ".vocab" has one word per line and the file with extension ".npy"
@@ -278,7 +286,6 @@ class Vocab(object):
     def finish(self, remove_counts=True):
         """Build the actual vocab instance, it can only be used properly to look-up things after calling
         this method, but no parameters can be changed nor counts added after this."""
-        logger = logging.getLogger(__name__)
         self.check_nonfinished("finish")
 
         # if the emb_train parameter was never set, try to come up with a sensible default here:

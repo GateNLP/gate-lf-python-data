@@ -8,18 +8,19 @@ import sys
 import logging
 import numpy
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+streamhandler = logging.StreamHandler(stream=sys.stderr)
 formatter = logging.Formatter(
-        '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-streamhandler = logging.StreamHandler()
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
+
+# add file handler to gatelfdata and our own loggers
 filehandler = logging.FileHandler("test_api.log")
 logger1 = logging.getLogger("gatelfdata")
 logger1.setLevel(logging.INFO)
-logger1.addHandler(streamhandler)
 logger1.addHandler(filehandler)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(streamhandler)
 logger.addHandler(filehandler)
 
 TESTDIR = os.path.join(os.path.dirname(__file__), '.')
