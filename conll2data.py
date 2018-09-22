@@ -190,4 +190,8 @@ meta_info["dataFile"] = os.path.abspath(outdata_name)
 meta_info["savedOn"] = datetime.datetime.today().strftime('%Y-%m-%d')
 with open(outmeta_name, "tw", encoding="utf-8") as outms:
     json.dump(meta_info, outms)
+print("Number of different tokens:", len(stringCounts_token), file=sys.stderr)
+print("Number of different targets:", len(stringCounts_target), file=sys.stderr)
+print("Number of tokens/targets: ", n_token, "/", n_target, file=sys.stderr)
+print("Number of instances/sequences:", linesWritten, file=sys.stderr)
 # DONE, output some infos ...
