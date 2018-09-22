@@ -8,18 +8,19 @@ import sys
 import logging
 import numpy
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+streamhandler = logging.StreamHandler(stream=sys.stderr)
 formatter = logging.Formatter(
-        '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-streamhandler = logging.StreamHandler()
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
+
+# add file handler to gatelfdata and our own loggers
 filehandler = logging.FileHandler("test_api.log")
 logger1 = logging.getLogger("gatelfdata")
 logger1.setLevel(logging.INFO)
-logger1.addHandler(streamhandler)
 logger1.addHandler(filehandler)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(streamhandler)
 logger.addHandler(filehandler)
 
 TESTDIR = os.path.join(os.path.dirname(__file__), '.')
@@ -214,10 +215,23 @@ class Tests4Batches(unittest.TestCase):
         ]
         # print("DEBUG: reshape_seq1: batch1=", batch1, file=sys.stderr)
         batch1_reshape = Dataset.reshape_batch_helper(batch1, feature_types=["index", "index"], is_sequence=True)
-        # print("DEBUG: reshape_seq1: batch1_reshape=", batch1_reshape, file=sys.stderr)
-        assert batch1_reshape == ([[[111, 0, 0, 0], [211, 221, 231, 241],
-                                    [311, 321, 0, 0]], [[112, 0, 0, 0], [212, 222, 232, 242], [312, 322, 0, 0]]],
-                                  [[-11, 0, 0, 0], [-21, -22, -23, -23], [-31, -32, 0, 0]])
+        # print("DEBUG: reshape_seq1: batch1_reshape=\n", batch1_reshape, file=sys.stderr)
+        # print("DEBUG: expected: \n",
+        #       [
+        #           [[111, 0, 0, 0], [211, 221, 231, 241], [311, 321, 0, 0]],
+        #           [[112, 0, 0, 0], [212, 222, 232, 242], [312, 322, 0, 0]]
+        #       ],
+        #       [
+        #           [-11, -1, -1, -1], [-21, -22, -23, -23], [-31, -32, -1, -1]
+        #       ], file=sys.stderr)
+
+        assert batch1_reshape == ([
+                  [[111, 0, 0, 0], [211, 221, 231, 241], [311, 321, 0, 0]],
+                  [[112, 0, 0, 0], [212, 222, 232, 242], [312, 322, 0, 0]]
+              ],
+              [
+                  [-11, -1, -1, -1], [-21, -22, -23, -23], [-31, -32, -1, -1]
+              ])
 
 class Tests4Dataset1test1(unittest.TestCase):
 
@@ -262,12 +276,11 @@ class Tests4Dataset1test1(unittest.TestCase):
         logger.debug("TESTFILE1 rec1=%r" % rec)
         # we expect rec to be a pair: indep and dep
         indep, dep = rec
+        # print("DEBUG: rec=", rec, file=sys.stderr)
         # the indep part has as many values as there are features here
         assert len(indep) == 34
-        # the dep part is the encoding for two nominal classes, we use
-        # a one-hot encoding always for now, so this should be a vector
-        # of length 2
-        assert dep == 1
+        # the dep part is the encoding for two nominal classes,
+        assert dep == 0
         # if we would have converted the target as_onehot then we
         # would have gotten a vector instead:
         # assert len(dep) == 2
@@ -302,12 +315,12 @@ class Tests4Dataset1test1(unittest.TestCase):
         logger.debug("TESTFILE2 info=%r" % ds.get_info())
         (indep1_it, dep1_it) = rec
         ngram1_it = indep1_it[0]
-        logger.debug("TESTFILE2 ngram1_it=%r", ngram1_it)
+        logger.debug("TESTFILE2 dep_it=%r", dep1_it)
+        # print("DEBUG dep1_it=", dep1_it, file=sys.stderr)
         assert len(ngram1_it) == 6
         assert ngram1_it[0] == 3543
         assert ngram1_it[1] == 9
-        assert dep1_it == 2
-        # assert len(dep1_it) == 2
+        assert dep1_it == 1
 
     def test_t4(self):
         # logger.info("Running Tests4Dataset1test1/test_t4")
@@ -391,8 +404,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         assert len(valset_conv) == 3
         vconvi2 = valset_conv[1]
         # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG: vconvi2=", vconvi2, file=sys.stderr)
-        # assert vconvi2 == [[[4, 83, 1529, 3, 74, 5, 189, 174, 1]], [0.0, 1.0]]
-        assert vconvi2 == [[[5, 84, 1530, 4, 75, 6, 190, 175, 2]], 2]
+        assert vconvi2 == [[[5, 84, 1530, 4, 75, 6, 190, 175, 2]], 1]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep
@@ -427,8 +439,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         # print("DEBUG: batch_conv1=%s" % (batch_conv1,), file=sys.stderr)
         assert len(batch_conv1) == 4
         # print("DEBUG: batch_conv1[1]=%s" % (batch_conv1[1],), file=sys.stderr)
-        # assert batch_conv1[1] ==[[[6693, 16, 6468, 543, 5, 167, 50, 58, 236, 1]], [1.0, 0.0]]
-        assert batch_conv1[1] == [[[6694, 17, 6469, 544, 6, 168, 51, 59, 237, 2]], 1]
+        assert batch_conv1[1] == [[[6694, 17, 6469, 544, 6, 168, 51, 59, 237, 2]], 0]
         bconvb2 = ds.batches_converted(train=True, batch_size=4, reshape=True)
         batch_conv2 = next(iter(bconvb2))
         # print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)
@@ -455,7 +466,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         assert len(valset_conv) == 3
         vconvi2 = valset_conv[1]
         # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG: vconvi2=", vconvi2, file=sys.stderr)
-        assert vconvi2 == [[13, 157, 25, 104, 12, 319, 2, 5, 2, 2, 2, 2, 2, 2, 0, 151, 28, 14, 0, 14, 0, 215, 0, 101, 0, 0], 1]
+        assert vconvi2 == [[13, 157, 25, 104, 12, 319, 2, 5, 2, 2, 2, 2, 2, 2, 0, 151, 28, 14, 0, 14, 0, 215, 0, 101, 0, 0], 0]
         valset_conv_b = ds.validation_set_converted(as_batch=True)
         # print("DEBUG: valset_conv_b=%s" % (valset_conv_b,), file=sys.stderr)
         # we expect a tuple for indep and dep
@@ -487,7 +498,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG: !!!batch_conv1[1]=%s" % (batch_conv1[1],), file=sys.stderr)
         assert len(batch_conv1) == 4
         # TODO: check why some indices changed between previously and now and if this is till correct!
-        assert batch_conv1[1] == [[1210, 1495, 9, 796, 23, 3075, 6, 3, 3, 3, 2, 3, 2, 2, 20, 54, 0, 86, 0, 2, 0, 391, 0, 300, 0, 77], 1]
+        assert batch_conv1[1] == [[1210, 1495, 9, 796, 23, 3075, 6, 3, 3, 3, 2, 3, 2, 2, 20, 54, 0, 86, 0, 2, 0, 391, 0, 300, 0, 77], 0]
         bconvb2 = ds.batches_converted(train=True, batch_size=4, reshape=True)
         batch_conv2 = next(iter(bconvb2))
         # print("DEBUG: batch_conv2=%s" % (batch_conv2,), file=sys.stderr)

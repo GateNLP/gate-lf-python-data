@@ -1,6 +1,15 @@
 """Module for the FeatureNGram class"""
 
 import logging
+import sys
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+streamhandler = logging.StreamHandler(stream=sys.stderr)
+formatter = logging.Formatter(
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
 
 
 class FeatureNgram(object):
@@ -8,7 +17,6 @@ class FeatureNgram(object):
     things that can be represented by embeddings, """
     def __init__(self, fname, attrinfo, featurestats, vocab):
         """Create the instance from the given meta info of an input feature"""
-        logger = logging.getLogger(__name__)
         logger.debug("Creating FeatureNgram instance for fname/attrinfo=%r/%r", fname, attrinfo)
         self.fname = fname
         self.attrinfo = attrinfo

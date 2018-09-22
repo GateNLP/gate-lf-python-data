@@ -8,6 +8,12 @@ from . featureboolean import FeatureBoolean
 from . featurengram import FeatureNgram
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+streamhandler = logging.StreamHandler(stream=sys.stderr)
+formatter = logging.Formatter(
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
 
 
 class Features(object):
@@ -16,7 +22,6 @@ class Features(object):
     def make_feature(self, fname, datatype, attribute, featurestats, vocabs):
         """Helper function to create a specific feature gets called as part of __init__"""
         kind = attribute["featureCode"]
-        logger = logging.getLogger(__name__)
         logger.debug("Making feature for kind/name/type/attr: %r/%r/%r/%r", kind, fname, datatype, attribute)
         if kind == "N":
             # create an ngram feature, based on a simple feature of type nominal

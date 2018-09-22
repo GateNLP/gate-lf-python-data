@@ -10,6 +10,14 @@ import math
 import gensim
 import sys
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+streamhandler = logging.StreamHandler(stream=sys.stderr)
+formatter = logging.Formatter(
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
+
 # OK, the protocol for using this is this:
 # * create a preliminary instance using "Vocab(...)"
 #   This can be a completely empty instance or already contain an initial set of counts using counts=
@@ -91,7 +99,6 @@ class Vocab(object):
         If emb_dir is not None, then all references to relative (embeddings) files are relative to that
         directory.
         """
-        logger = logging.getLogger(__name__)
         if counts:
             self.freqs = Counter(counts)
         else:
@@ -154,7 +161,6 @@ class Vocab(object):
             return embs
 
     def load_embeddings(self, emb_file, filterset=None):
-        logger = logging.getLogger(__name__)
         """Load pre-calculated embeddings from the given file. This will update embd_dim as needed!
         Currently only supports text format, compressed text format or a two file format where
         the file with extension ".vocab" has one word per line and the file with extension ".npy"
@@ -279,7 +285,6 @@ class Vocab(object):
     def finish(self, remove_counts=True):
         """Build the actual vocab instance, it can only be used properly to look-up things after calling
         this method, but no parameters can be changed nor counts added after this."""
-        logger = logging.getLogger(__name__)
         self.check_nonfinished("finish")
 
         # if the emb_train parameter was never set, try to come up with a sensible default here:
@@ -317,6 +322,7 @@ class Vocab(object):
             else:
                 filtered_words.add(s)
         # sort the keys by frequency, then alphabetically in reverse order
+        # (so to achieve this sort, sort first alphabetically, then by frequency)
         self.itos = sorted(self.itos)
         print("Vocab",self.emb_id,"after minfreq filtering: ",len(self.itos), file=sys.stderr)
         self.itos = sorted(self.itos, reverse=True, key=lambda x: self.freqs[x])
@@ -509,8 +515,14 @@ class Vocab(object):
         else:
             raise Exception("Cannot retrieve count, data has been removed")
 
+    def size(self):
+        """Return the total number of entries in the vocab, including any special symbols"""
+        return len(self.itos)
+
     def __str__(self):
         return self.__repr__()+":nentries=%d" % len(self.stoi)
 
     def __repr__(self):
-        return "Vocab(emb_id=%r,emb_train=%r,emb_file=%r,emb_dims=%d)" % (self.emb_id, self.emb_train, self.emb_file, self.emb_dims)
+        tmp_entries = [self.itos[i] for i in range(min(len(self.itos),20))]
+        return "Vocab(n=%d,emb_id=%r,emb_train=%r,emb_file=%r,emb_dims=%d,entries=%s)" % \
+               (len(self.stoi), self.emb_id, self.emb_train, self.emb_file, self.emb_dims, tmp_entries)

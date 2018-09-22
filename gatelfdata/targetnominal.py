@@ -3,11 +3,22 @@
 
 from collections import Counter
 from . vocab import Vocab
+import sys
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+streamhandler = logging.StreamHandler(stream=sys.stderr)
+formatter = logging.Formatter(
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+streamhandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
+
 
 class TargetNominal(object):
 
 
-    def __init__(self, meta, vocabs, targets_need_padding=True):
+    def __init__(self, meta, vocabs, targets_need_padding=False):
         self.meta = meta
         self.isSequence = meta["isSequence"]
         if self.isSequence:

@@ -13,3 +13,8 @@ if len(sys.argv) != 2:
 file = sys.argv[1]
 
 ds = Dataset(file)
+
+# Now list all the vocabs
+vocabs = ds.vocabs
+for name, vocab in vocabs.vocabs.items():
+    print("Name=%s, vocab=%r" % (name, vocab, ))
