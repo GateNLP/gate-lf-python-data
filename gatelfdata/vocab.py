@@ -8,6 +8,7 @@ import numpy as np
 import math
 # TODO: maybe make use of the gensim library optional?
 import gensim
+import sys
 
 # OK, the protocol for using this is this:
 # * create a preliminary instance using "Vocab(...)"
@@ -309,6 +310,7 @@ class Vocab(object):
         # put all the words not satisfying the restriction in the filtered_words set
         filtered_words = set()
         self.itos = []
+        print("Finishing vocab ",self.emb_id,"before filtering: ",len(self.freqs), file=sys.stderr)
         for s in self.freqs:
             if self.freqs[s] >= self.emb_minfreq:
                 self.itos.append(s)
@@ -316,6 +318,7 @@ class Vocab(object):
                 filtered_words.add(s)
         # sort the keys by frequency, then alphabetically in reverse order
         self.itos = sorted(self.itos)
+        print("Vocab",self.emb_id,"after minfreq filtering: ",len(self.itos), file=sys.stderr)
         self.itos = sorted(self.itos, reverse=True, key=lambda x: self.freqs[x])
         # add the additional symbols at the beginning, first and always at index 0, the pad symbol, except
         # when no_pad is True
@@ -335,7 +338,7 @@ class Vocab(object):
         for i, s in enumerate(self.itos):
             self.stoi[s] = i
         self.n = len(self.itos)
-
+        print("Vocab", self.emb_id, "final: ", self.n, file=sys.stderr)
         if self.emb_train == "onehot":
             # set the emb_dims to the number of values we have, but if we have a padding symbol,
             # do not include it in the dimensions
