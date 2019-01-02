@@ -11,6 +11,8 @@ from .target import Target
 from .vocabs import Vocabs
 import sys
 
+from .lib.dataset import ShuffledDataset, LineTsvDataset
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 streamhandler = logging.StreamHandler(stream=sys.stderr)
@@ -76,6 +78,13 @@ class Dataset(object):
         self.vocabs = Vocabs()
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)
+        # we do not use the dataFile field because this will be invalid
+        # if the files have been moved from their original location
+        # self.datafile = self.meta["dataFile"]
+        self.orig_data_file = Dataset.data4meta(metafile)
+        # create the indexed line dataset wrapper and shuffled dataset wrappers
+        self.line_dataset = LineTsvDataset(self.orig_data_file)
+        self.shuffled_dataset = ShuffledDataset(self.line_dataset)
         # override meta settings for the embeddings
         if config and "embs" in config and config["embs"] is not None:
             embs = config["embs"]
@@ -105,10 +114,6 @@ class Dataset(object):
                             if k.startswith("emb_"):
                                 attrinfo[k] = v
 
-        # we do not use the dataFile field because this will be invalid
-        # if the files have been moved from their original location
-        # self.datafile = self.meta["dataFile"]
-        self.orig_data_file = Dataset.data4meta(metafile)
         self.features = Features(self.meta, self.vocabs)
         self.target = Target.make(self.meta, self.vocabs, targets_need_padding=targets_need_padding)
         self.isSequence = self.meta["isSequence"]
@@ -172,7 +177,11 @@ class Dataset(object):
         with the split() method is used. If file is not None, train is ignored and the file specified
         is read instead.
         """
-        class StringIterable(object):
+        class StringIterableOLD(object):
+            """
+            NOTE: this was the implementation before we wrapped the original file into
+            a shuffled tsv line dataset!
+            """
             def __init__(self, datafile):
                 self.datafile = datafile
 
@@ -180,6 +189,17 @@ class Dataset(object):
                 with open(self.datafile, "rt", encoding="utf=8") as inp:
                     for line in inp:
                         yield line
+
+        class StringIterable(object):
+            def __init__(self, datafile):
+                self.datafile = datafile
+                self.line_dataset = LineTsvDataset(self.datafile)
+                self.shuffled_dataset = ShuffledDataset(self.line_dataset)
+
+            def __iter__(self):
+                for i in range(len(self.shuffled_dataset)):
+                    yield self.shuffled_dataset[i]
+
         if file:
             whichfile = file
         else:
@@ -195,7 +215,8 @@ class Dataset(object):
         """Returns an iterable that allows to read the instances from a file in original format.
         This file is the original data file by default, but could also the train file created with
         the split() method or any other file derived from the original data file."""
-        class StringIterable(object):
+        class StringIterableOLD(object):
+            """Implementation from before use of line dataset"""
             def __init__(self, datafile):
                 self.datafile = datafile
 
@@ -203,6 +224,16 @@ class Dataset(object):
                 with open(self.datafile, "rt", encoding="utf=8") as inp:
                     for line in inp:
                         yield json.loads(line, encoding="UTF-8")
+
+        class StringIterable(object):
+            def __init__(self, datafile):
+                self.datafile = datafile
+                self.line_dataset = LineTsvDataset(self.datafile)
+                self.shuffled_dataset = ShuffledDataset(self.line_dataset)
+
+            def __iter__(self):
+                for i in range(len(self.shuffled_dataset)):
+                    yield self.shuffled_dataset[i]
         if file:
             whichfile = file
         else:
