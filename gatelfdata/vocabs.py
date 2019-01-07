@@ -17,8 +17,16 @@ logger.addHandler(streamhandler)
 class Vocabs(object):
     """A class for managing all the vocab instances that are needed by features"""
 
-    def __init__(self):
+    def __init__(self, remove_counts=True, remove_embs=true):
+        """
+        Create a vocabs instance and set the default behaviour when finishing each
+        vocab.
+        :param remove_counts: remove the counts per word data when finishing
+        :param remove_embs: remove the embs per word data when finishing
+        """
         # map from embedding id to vocab instance
+        self.remove_counts = remove_counts
+        self.remove_embs = remove_embs
         self.vocabs = defaultdict()
 
     def setup_vocab(self, attrinfo, featurestats):
@@ -43,7 +51,7 @@ class Vocabs(object):
     def finish(self):
         """Once all the counts have been gathered, create the final instances"""
         for _, vocab in self.vocabs.items():
-            vocab.finish()
+            vocab.finish(remove_counts=self.remove_counts, remove_embs=self.remove_embs)
         logger.debug("Finished vocabs: %s" % (self.vocabs,))
 
     def get_vocab(self, attrinfo_or_embid):

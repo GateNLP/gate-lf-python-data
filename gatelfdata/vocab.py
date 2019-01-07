@@ -282,7 +282,7 @@ class Vocab(object):
         self.check_nonfinished("set_emb_dims")
         self.emb_dims = dim
 
-    def finish(self, remove_counts=True):
+    def finish(self, remove_counts=True, remove_embs=True):
         """Build the actual vocab instance, it can only be used properly to look-up things after calling
         this method, but no parameters can be changed nor counts added after this."""
         self.check_nonfinished("finish")
@@ -425,7 +425,8 @@ class Vocab(object):
         # print("DEBUG: stoe new=", self.stoe, file=sys.stderr)
 
         # cleanup what we do not need any more
-        self.stoe = None
+        if remove_embs:
+            self.stoe = None
         if remove_counts:
             self.freqs = None
         self.finished = True

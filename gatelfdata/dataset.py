@@ -75,7 +75,9 @@ class Dataset(object):
         """
         self.config = config
         # print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
-        self.vocabs = Vocabs()
+        remove_embs = config.get("remove_embs") or True
+        remove_counts = config.get("remove_counts") or True
+        self.vocabs = Vocabs(remove_embs=remove_embs, remove_counts=remove_counts)
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)
         # we do not use the dataFile field because this will be invalid
