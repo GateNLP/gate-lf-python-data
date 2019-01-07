@@ -2,7 +2,7 @@
 
 import logging
 from collections import defaultdict
-from . vocab import Vocab
+from gatelfdata.vocab import Vocab
 import sys
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ logger.addHandler(streamhandler)
 class Vocabs(object):
     """A class for managing all the vocab instances that are needed by features"""
 
-    def __init__(self, remove_counts=True, remove_embs=true):
+    def __init__(self, remove_counts=True, remove_embs=True):
         """
         Create a vocabs instance and set the default behaviour when finishing each
         vocab.

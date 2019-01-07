@@ -2,10 +2,10 @@
 
 import sys
 import logging
-from . featurenumeric import FeatureNumeric
-from . featurenominalembs import FeatureNominalEmbs
-from . featureboolean import FeatureBoolean
-from . featurengram import FeatureNgram
+from gatelfdata.featurenumeric import FeatureNumeric
+from gatelfdata.featurenominalembs import FeatureNominalEmbs
+from gatelfdata.featureboolean import FeatureBoolean
+from gatelfdata.featurengram import FeatureNgram
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

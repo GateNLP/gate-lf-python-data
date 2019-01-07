@@ -7,7 +7,7 @@ import re
 import numpy as np
 import math
 # TODO: maybe make use of the gensim library optional?
-import gensim
+# import gensim
 import sys
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ class Vocab(object):
             if toidx < 0:
                 toidx = len(line)
             embs.append(float(line[fromidx:toidx]))
-            return embs
+        return embs
 
     def load_embeddings(self, emb_file, filterset=None):
         """Load pre-calculated embeddings from the given file. This will update embd_dim as needed!
@@ -221,6 +221,7 @@ class Vocab(object):
         elif emb_file.endswith(".vocab") or emb_file.endswith(".npy"):
             raise Exception("TODO: format .vocab/.npy not yet implemented!")
         elif emb_file.endswith(".gensim"):
+            import gensim
             gensimmodel = gensim.models.KeyedVectors.load(emb_file, mmap='r')
             # now copy over only the embeddings we actually need
             # TODO: !!!!
@@ -228,7 +229,9 @@ class Vocab(object):
         else:
             raise Exception("Embeddings file must have one of the extensions: .txt, .txt.gz, .vocab, .npy")
         self.embeddings_loaded = True
-        logger.info("Embeddings for %s loaded: %s, dims=%s" % (self.emb_id, n_added, self.emb_dims))
+        logger.info("Embeddings for \"%s\" loaded: %s, dims=%s" % (self.emb_id, n_added, self.emb_dims))
+        #if self.stoe is not None and "the" in self.stoe:
+        #    print("DEBUG: embeddings for the", self.stoe["the"], file=sys.stderr)
 
     def get_embeddings(self):
         """Return a numpy matrix of the embeddings in the order of the indices. If this is called
@@ -315,7 +318,7 @@ class Vocab(object):
         # put all the words not satisfying the restriction in the filtered_words set
         filtered_words = set()
         self.itos = []
-        print("Finishing vocab ",self.emb_id,"before filtering: ",len(self.freqs), file=sys.stderr)
+        print("Finishing vocab ", self.emb_id, "before filtering: ", len(self.freqs), file=sys.stderr)
         for s in self.freqs:
             if self.freqs[s] >= self.emb_minfreq:
                 self.itos.append(s)
@@ -324,7 +327,7 @@ class Vocab(object):
         # sort the keys by frequency, then alphabetically in reverse order
         # (so to achieve this sort, sort first alphabetically, then by frequency)
         self.itos = sorted(self.itos)
-        print("Vocab",self.emb_id,"after minfreq filtering: ",len(self.itos), file=sys.stderr)
+        print("Vocab", self.emb_id, "after minfreq filtering: ", len(self.itos), file=sys.stderr)
         self.itos = sorted(self.itos, reverse=True, key=lambda x: self.freqs[x])
         # add the additional symbols at the beginning, first and always at index 0, the pad symbol, except
         # when no_pad is True
@@ -423,6 +426,9 @@ class Vocab(object):
         # print("DEBUG: itos new=", self.itos, file=sys.stderr)
         # print("DEBUG: stoi new=", self.stoi, file=sys.stderr)
         # print("DEBUG: stoe new=", self.stoe, file=sys.stderr)
+
+        # if self.stoe is not None and "the" in self.stoe:
+        #    print("DEBUG: embeddings for the", self.stoe["the"], file=sys.stderr)
 
         # cleanup what we do not need any more
         if remove_embs:

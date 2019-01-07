@@ -6,12 +6,12 @@ from io import open    # use with open("asas",'rt',encoding='utf-8')
 import re
 import os
 import logging
-from .features import Features
-from .target import Target
-from .vocabs import Vocabs
+from gatelfdata.features import Features
+from gatelfdata.target import Target
+from gatelfdata.vocabs import Vocabs
 import sys
 
-from .lib.dataset import ShuffledDataset, LineTsvDataset
+from gatelfdata.lib.dataset import ShuffledDataset, LineTsvDataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -75,8 +75,12 @@ class Dataset(object):
         """
         self.config = config
         # print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
-        remove_embs = config.get("remove_embs") or True
-        remove_counts = config.get("remove_counts") or True
+        remove_embs = config.get("remove_embs")
+        if remove_embs is None:
+            remove_embs = True
+        remove_counts = config.get("remove_counts")
+        if remove_counts is None:
+            remove_counts = True
         self.vocabs = Vocabs(remove_embs=remove_embs, remove_counts=remove_counts)
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)

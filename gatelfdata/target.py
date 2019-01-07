@@ -1,7 +1,7 @@
 """Module for the Target class"""
 import sys
 import logging
-from . targetnominal import TargetNominal
+from gatelfdata.targetnominal import TargetNominal
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

@@ -2,7 +2,7 @@
 
 
 from collections import Counter
-from . vocab import Vocab
+from gatelfdata.vocab import Vocab
 import sys
 import logging
 
