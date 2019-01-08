@@ -2,14 +2,16 @@
 '''
 Temporary implementation of the Dataset interface without dependency on
 pytorch to make accessing the data file in a sorted way possible.
+IMPORTANT! This has been copied over from a different library and currently
+contains some features which are not used or relevant in here.
 '''
 
 import os
-import pickle
 import random
 import sys
 import pickle
 import json
+
 
 class ExtendedDataset(object):
     """
@@ -39,14 +41,14 @@ class ShuffledDataset(ExtendedDataset):
     def __init__(self, dataset, seed=None):
         """
         :param seed: if not None, shuffle the list of instances randomly, using the given seed.
-          If the seed is 0, the system time is used, if seed is -1, the seed is not actually set
+          If the seed is 0, the system time is used, if seed is -1, the seed is not set at all
+          and whatever the current state of the random generator is is used.
         """
         super().__init__()
         self.dataset = dataset
         self.seed = seed
         self.idxs = list(range(len(dataset)))
         self.shuffle(seed)
-
 
     def shuffle(self, seed=0):
         """
@@ -176,6 +178,7 @@ class LineTsvDataset(ExtendedDataset):
             else:
                 return fields[self.cols]
 
+
 class DirFilesDataset(ExtendedDataset):
 
     def path4(self, index):
@@ -269,7 +272,6 @@ class DirFilesDataset(ExtendedDataset):
             self.len = index-1
 
 
-
 class DirCachedDataset(DirFilesDataset):
 
     def __init__(self, dataset=None, directory=None, as_format='pickle', basenames=None):
@@ -309,8 +311,6 @@ class DirCachedDataset(DirFilesDataset):
             ret = self.dataset.__getitem__(index)
             super().__setitem__(index, ret)
             return ret
-
-
 
 
 if __name__ == "__main__":

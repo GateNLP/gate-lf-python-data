@@ -18,7 +18,7 @@ Main functionality:
 ## Requirements
 
 Requirements:
-* Python 3 - this does not work with python 2.x!
+* Python 3.5 or later - this does not work with python 2.x!
 * Python package `numpy`
 
 ## Overview of the documentation:

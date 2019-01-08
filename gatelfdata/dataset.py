@@ -59,7 +59,7 @@ class Dataset(object):
         with open(metafile, "rt", encoding="utf-8") as inp:
             return json.load(inp)
 
-    def __init__(self, metafile, reuse_files=False, config=None, targets_need_padding=False):
+    def __init__(self, metafile, reuse_files=False, config={}, targets_need_padding=False):
         """Creating an instance will read the metadata and create the converters for
         converting the instances from the original data format (which contains the original
         values and strings) to a converted representation where strings are replaced by
@@ -74,13 +74,10 @@ class Dataset(object):
         specifying the dimensions, train mode, and minimum frequency.
         """
         self.config = config
+        self.seed = self.config.get("seed", 0)
         # print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
-        remove_embs = config.get("remove_embs")
-        if remove_embs is None:
-            remove_embs = True
-        remove_counts = config.get("remove_counts")
-        if remove_counts is None:
-            remove_counts = True
+        remove_embs = config.get("remove_embs", True)
+        remove_counts = config.get("remove_counts", True)
         self.vocabs = Vocabs(remove_embs=remove_embs, remove_counts=remove_counts)
         self.metafile = metafile
         self.meta = Dataset.load_meta(metafile)
@@ -183,24 +180,13 @@ class Dataset(object):
         with the split() method is used. If file is not None, train is ignored and the file specified
         is read instead.
         """
-        class StringIterableOLD(object):
-            """
-            NOTE: this was the implementation before we wrapped the original file into
-            a shuffled tsv line dataset!
-            """
-            def __init__(self, datafile):
-                self.datafile = datafile
-
-            def __iter__(self):
-                with open(self.datafile, "rt", encoding="utf=8") as inp:
-                    for line in inp:
-                        yield line
 
         class StringIterable(object):
-            def __init__(self, datafile):
+            def __init__(self, datafile, seed=0):
                 self.datafile = datafile
+                self.seed = seed
                 self.line_dataset = LineTsvDataset(self.datafile)
-                self.shuffled_dataset = ShuffledDataset(self.line_dataset)
+                self.shuffled_dataset = ShuffledDataset(self.line_dataset, seed=self.seed)
 
             def __iter__(self):
                 for i in range(len(self.shuffled_dataset)):
@@ -215,27 +201,19 @@ class Dataset(object):
                 whichfile = self.orig_train_file
             else:
                 whichfile = self.orig_data_file
-        return StringIterable(whichfile)
+        return StringIterable(whichfile, seed=self.seed)
 
     def instances_original(self, train=False, file=None):
         """Returns an iterable that allows to read the instances from a file in original format.
         This file is the original data file by default, but could also the train file created with
         the split() method or any other file derived from the original data file."""
-        class StringIterableOLD(object):
-            """Implementation from before use of line dataset"""
-            def __init__(self, datafile):
-                self.datafile = datafile
-
-            def __iter__(self):
-                with open(self.datafile, "rt", encoding="utf=8") as inp:
-                    for line in inp:
-                        yield json.loads(line, encoding="UTF-8")
 
         class StringIterable(object):
-            def __init__(self, datafile):
+            def __init__(self, datafile, seed=0):
                 self.datafile = datafile
+                self.seed = seed
                 self.line_dataset = LineTsvDataset(self.datafile)
-                self.shuffled_dataset = ShuffledDataset(self.line_dataset)
+                self.shuffled_dataset = ShuffledDataset(self.line_dataset, seed=self.seed)
 
             def __iter__(self):
                 for i in range(len(self.shuffled_dataset)):
@@ -249,7 +227,7 @@ class Dataset(object):
                 whichfile = self.orig_train_file
             else:
                 whichfile = self.orig_data_file
-        return StringIterable(whichfile)
+        return StringIterable(whichfile, seed=self.seed)
 
 
     def convert_indep(self, indep, normalize=None):
