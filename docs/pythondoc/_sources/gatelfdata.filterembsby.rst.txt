@@ -1,0 +1,7 @@
+gatelfdata\.filterembsby module
+===============================
+
+.. automodule:: gatelfdata.filterembsby
+    :members:
+    :undoc-members:
+    :show-inheritance:

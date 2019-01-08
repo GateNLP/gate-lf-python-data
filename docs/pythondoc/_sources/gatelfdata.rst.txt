@@ -12,6 +12,7 @@ Submodules
    gatelfdata.featurenominalembs
    gatelfdata.featurenumeric
    gatelfdata.features
+   gatelfdata.filterembsby
    gatelfdata.target
    gatelfdata.targetnominal
    gatelfdata.vocab

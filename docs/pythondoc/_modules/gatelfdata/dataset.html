@@ -57,10 +57,20 @@
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">.features</span> <span class="k">import</span> <span class="n">Features</span>
-<span class="kn">from</span> <span class="nn">.target</span> <span class="k">import</span> <span class="n">Target</span>
-<span class="kn">from</span> <span class="nn">.vocabs</span> <span class="k">import</span> <span class="n">Vocabs</span>
+<span class="kn">from</span> <span class="nn">gatelfdata.features</span> <span class="k">import</span> <span class="n">Features</span>
+<span class="kn">from</span> <span class="nn">gatelfdata.target</span> <span class="k">import</span> <span class="n">Target</span>
+<span class="kn">from</span> <span class="nn">gatelfdata.vocabs</span> <span class="k">import</span> <span class="n">Vocabs</span>
 <span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">gatelfdata.lib.dataset</span> <span class="k">import</span> <span class="n">ShuffledDataset</span><span class="p">,</span> <span class="n">LineTsvDataset</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">streamhandler</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+<span class="n">formatter</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span>
+                <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> </span><span class="si">%(name)-12s</span><span class="s1"> </span><span class="si">%(levelname)-8s</span><span class="s1"> </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">streamhandler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">formatter</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">streamhandler</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="Dataset"><a class="viewcode-back" href="../../gatelfdata.dataset.html#gatelfdata.dataset.Dataset">[docs]</a><span class="k">class</span> <span class="nc">Dataset</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -100,7 +110,7 @@
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">metafile</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">inp</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span></div>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metafile</span><span class="p">,</span> <span class="n">reuse_files</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">targets_need_padding</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metafile</span><span class="p">,</span> <span class="n">reuse_files</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">targets_need_padding</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Creating an instance will read the metadata and create the converters for</span>
 <span class="sd">        converting the instances from the original data format (which contains the original</span>
 <span class="sd">        values and strings) to a converted representation where strings are replaced by</span>
@@ -114,12 +124,24 @@
 <span class="sd">        * embs=id:dims:train:minfreq,id:dims:drain:minfreq - a list of settings each for some id,</span>
 <span class="sd">        specifying the dimensions, train mode, and minimum frequency.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
         <span class="c1"># print(&quot;DEBUG creating dataset from &quot;, metafile, &quot;config is&quot;, config, file=sys.stderr)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span> <span class="o">=</span> <span class="n">Vocabs</span><span class="p">()</span>
+        <span class="n">remove_embs</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;remove_embs&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">remove_embs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">remove_embs</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">remove_counts</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;remove_counts&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">remove_counts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">remove_counts</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span> <span class="o">=</span> <span class="n">Vocabs</span><span class="p">(</span><span class="n">remove_embs</span><span class="o">=</span><span class="n">remove_embs</span><span class="p">,</span> <span class="n">remove_counts</span><span class="o">=</span><span class="n">remove_counts</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metafile</span> <span class="o">=</span> <span class="n">metafile</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">load_meta</span><span class="p">(</span><span class="n">metafile</span><span class="p">)</span>
+        <span class="c1"># we do not use the dataFile field because this will be invalid</span>
+        <span class="c1"># if the files have been moved from their original location</span>
+        <span class="c1"># self.datafile = self.meta[&quot;dataFile&quot;]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orig_data_file</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">data4meta</span><span class="p">(</span><span class="n">metafile</span><span class="p">)</span>
+        <span class="c1"># create the indexed line dataset wrapper and shuffled dataset wrappers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">line_dataset</span> <span class="o">=</span> <span class="n">LineTsvDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orig_data_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shuffled_dataset</span> <span class="o">=</span> <span class="n">ShuffledDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_dataset</span><span class="p">)</span>
         <span class="c1"># override meta settings for the embeddings</span>
         <span class="k">if</span> <span class="n">config</span> <span class="ow">and</span> <span class="s2">&quot;embs&quot;</span> <span class="ow">in</span> <span class="n">config</span> <span class="ow">and</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;embs&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">embs</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;embs&quot;</span><span class="p">]</span>
@@ -149,10 +171,6 @@
                             <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;emb_&quot;</span><span class="p">):</span>
                                 <span class="n">attrinfo</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
 
-        <span class="c1"># we do not use the dataFile field because this will be invalid</span>
-        <span class="c1"># if the files have been moved from their original location</span>
-        <span class="c1"># self.datafile = self.meta[&quot;dataFile&quot;]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">orig_data_file</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">data4meta</span><span class="p">(</span><span class="n">metafile</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="n">Features</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">Target</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="p">,</span> <span class="n">targets_need_padding</span><span class="o">=</span><span class="n">targets_need_padding</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">isSequence</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;isSequence&quot;</span><span class="p">]</span>
@@ -216,7 +234,11 @@
 <span class="sd">        with the split() method is used. If file is not None, train is ignored and the file specified</span>
 <span class="sd">        is read instead.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">class</span> <span class="nc">StringIterable</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="k">class</span> <span class="nc">StringIterableOLD</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            NOTE: this was the implementation before we wrapped the original file into</span>
+<span class="sd">            a shuffled tsv line dataset!</span>
+<span class="sd">            &quot;&quot;&quot;</span>
             <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datafile</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span> <span class="o">=</span> <span class="n">datafile</span>
 
@@ -224,6 +246,17 @@
                 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf=8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">inp</span><span class="p">:</span>
                     <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">inp</span><span class="p">:</span>
                         <span class="k">yield</span> <span class="n">line</span>
+
+        <span class="k">class</span> <span class="nc">StringIterable</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datafile</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span> <span class="o">=</span> <span class="n">datafile</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">line_dataset</span> <span class="o">=</span> <span class="n">LineTsvDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">shuffled_dataset</span> <span class="o">=</span> <span class="n">ShuffledDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_dataset</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shuffled_dataset</span><span class="p">)):</span>
+                    <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">shuffled_dataset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
         <span class="k">if</span> <span class="n">file</span><span class="p">:</span>
             <span class="n">whichfile</span> <span class="o">=</span> <span class="n">file</span>
         <span class="k">else</span><span class="p">:</span>
@@ -239,7 +272,8 @@
         <span class="sd">&quot;&quot;&quot;Returns an iterable that allows to read the instances from a file in original format.</span>
 <span class="sd">        This file is the original data file by default, but could also the train file created with</span>
 <span class="sd">        the split() method or any other file derived from the original data file.&quot;&quot;&quot;</span>
-        <span class="k">class</span> <span class="nc">StringIterable</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="k">class</span> <span class="nc">StringIterableOLD</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Implementation from before use of line dataset&quot;&quot;&quot;</span>
             <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datafile</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span> <span class="o">=</span> <span class="n">datafile</span>
 
@@ -247,6 +281,16 @@
                 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf=8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">inp</span><span class="p">:</span>
                     <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">inp</span><span class="p">:</span>
                         <span class="k">yield</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;UTF-8&quot;</span><span class="p">)</span>
+
+        <span class="k">class</span> <span class="nc">StringIterable</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datafile</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span> <span class="o">=</span> <span class="n">datafile</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">line_dataset</span> <span class="o">=</span> <span class="n">LineTsvDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">shuffled_dataset</span> <span class="o">=</span> <span class="n">ShuffledDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_dataset</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shuffled_dataset</span><span class="p">)):</span>
+                    <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">shuffled_dataset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">file</span><span class="p">:</span>
             <span class="n">whichfile</span> <span class="o">=</span> <span class="n">file</span>
         <span class="k">else</span><span class="p">:</span>
@@ -301,7 +345,8 @@
         <span class="k">return</span> <span class="p">[</span><span class="n">indep_converted</span><span class="p">,</span> <span class="n">dep_converted</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="Dataset.split"><a class="viewcode-back" href="../../gatelfdata.dataset.html#gatelfdata.dataset.Dataset.split">[docs]</a>    <span class="k">def</span> <span class="nf">split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">validation_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">validation_part</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">random_seed</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-              <span class="n">convert</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">keep_orig</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reuse_files</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+              <span class="n">convert</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">keep_orig</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reuse_files</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+              <span class="n">validation_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;This splits the original file into an actual training file and a validation set file.</span>
 <span class="sd">        This creates two new files in the same location as the original files, with the &quot;data&quot;/&quot;meta&quot;</span>
 <span class="sd">        parts of the name replaced with &quot;val&quot; for validation and &quot;train&quot; for training. If converted is</span>
@@ -314,29 +359,36 @@
 <span class="sd">        If random_seed is set to 0 or None, the random seed generator does not get initialized.</span>
 <span class="sd">        If reuse_files is True and the files that would have been created are already there</span>
 <span class="sd">        the method does nothing for that file, assuming, but not checking that the contents is correct.</span>
+<span class="sd">        If validation_file is not none, then validation_size and validation_part are ignored and</span>
+<span class="sd">        the whole original file is used as training file, the given validation_file is expected to</span>
+<span class="sd">        be a data file that fits the meta, and the content of the validation file is used.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Called split with validation_size=</span><span class="si">%s</span><span class="s2"> validation_part=</span><span class="si">%s</span><span class="s2"> validation_file=</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                     <span class="p">(</span><span class="n">validation_size</span><span class="p">,</span> <span class="n">validation_part</span><span class="p">,</span> <span class="n">validation_file</span><span class="p">))</span>
         <span class="n">valindices</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">validation_size</span> <span class="ow">or</span> <span class="n">validation_part</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">random_seed</span><span class="p">:</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">random_seed</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">validation_size</span><span class="p">:</span>
-                <span class="n">valsize</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">validation_size</span><span class="p">)</span>
+
+        <span class="c1"># the following is only relevant if we do not have a defined validation file</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">validation_file</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">validation_size</span> <span class="ow">or</span> <span class="n">validation_part</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">random_seed</span><span class="p">:</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">random_seed</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">validation_size</span><span class="p">:</span>
+                    <span class="n">valsize</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">validation_size</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">valsize</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span> <span class="o">*</span> <span class="n">validation_part</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">valsize</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">valsize</span> <span class="o">&gt;</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Validation set size should not be less than 1 or more &#39;</span>
+                                    <span class="s1">&#39;than half the data, but is </span><span class="si">%s</span><span class="s1"> (n=</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">valsize</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span><span class="p">))</span>
+                <span class="c1"># now get valsize integers from the range 0 to nInstances-1: these are the instance indices</span>
+                <span class="c1"># we want to reserve for the validation set</span>
+                <span class="n">choices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">valsize</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;convert_to_file, nInst=</span><span class="si">%s</span><span class="s2">, valsize=</span><span class="si">%s</span><span class="s2">, choices=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span><span class="p">,</span> <span class="n">valsize</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">choices</span><span class="p">)))</span>
+                <span class="k">for</span> <span class="n">choice</span> <span class="ow">in</span> <span class="n">choices</span><span class="p">:</span>
+                    <span class="n">valindices</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">choice</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">valsize</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span> <span class="o">*</span> <span class="n">validation_part</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">valsize</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">valsize</span> <span class="o">&gt;</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Validation set size should not be less than 1 or more &#39;</span>
-                                <span class="s1">&#39;than half the data, but is </span><span class="si">%s</span><span class="s1"> (n=</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">valsize</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span><span class="p">))</span>
-            <span class="c1"># now get valsize integers from the range 0 to nInstances-1: these are the instance indices</span>
-            <span class="c1"># we want to reserve for the validation set</span>
-            <span class="n">choices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">valsize</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;convert_to_file, nInst=</span><span class="si">%s</span><span class="s2">, valsize=</span><span class="si">%s</span><span class="s2">, choices=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nInstances</span><span class="p">,</span> <span class="n">valsize</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">choices</span><span class="p">)))</span>
-            <span class="k">for</span> <span class="n">choice</span> <span class="ow">in</span> <span class="n">choices</span><span class="p">:</span>
-                <span class="n">valindices</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">choice</span><span class="p">)</span>
-            <span class="c1"># print(&quot;DEBUG: valindices=%s&quot; % valindices, file=sys.stderr)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># we just keep the empy valindices set</span>
-            <span class="k">pass</span>
+                <span class="c1"># we just keep the empy valindices set</span>
+                <span class="k">pass</span>
+
         <span class="n">origtrainfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">modified4meta</span><span class="p">(</span><span class="n">name_part</span><span class="o">=</span><span class="s2">&quot;orig.train&quot;</span><span class="p">,</span> <span class="n">dirname</span><span class="o">=</span><span class="n">outdir</span><span class="p">)</span>
         <span class="n">origvalfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">modified4meta</span><span class="p">(</span><span class="n">name_part</span><span class="o">=</span><span class="s2">&quot;orig.val&quot;</span><span class="p">,</span> <span class="n">dirname</span><span class="o">=</span><span class="n">outdir</span><span class="p">)</span>
         <span class="n">convtrainfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">modified4meta</span><span class="p">(</span><span class="n">name_part</span><span class="o">=</span><span class="s2">&quot;converted.train&quot;</span><span class="p">,</span> <span class="n">dirname</span><span class="o">=</span><span class="n">outdir</span><span class="p">)</span>
@@ -365,25 +417,61 @@
         <span class="c1"># outconvtrain, outconvval), file=sys.stderr)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">outdir</span> <span class="o">=</span> <span class="n">outdir</span>
         <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="c1"># if we already have everything from a previous run, do nothing</span>
+        <span class="n">n_train</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">n_val</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># if we do not need to do anything, reurn</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">outorigtrain</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">outorigval</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">outconvval</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">outconvtrain</span><span class="p">:</span>
             <span class="k">return</span>
-        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">instances_as_string</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">convert</span><span class="p">:</span>
-                <span class="n">converted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert_instance</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">converted</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">valindices</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">outorigval</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outorigval</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">outconvval</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="n">converted</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outconvval</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
+
+        <span class="c1"># if we actually need to split, run the following</span>
+        <span class="k">if</span> <span class="n">validation_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">instances_as_string</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">convert</span><span class="p">:</span>
+                    <span class="n">converted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert_instance</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">converted</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">valindices</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">outorigval</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outorigval</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">outconvval</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">converted</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outconvval</span><span class="p">)</span>
+                    <span class="n">n_val</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">outorigtrain</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outorigtrain</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">outconvtrain</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">converted</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outconvtrain</span><span class="p">)</span>
+                    <span class="n">n_train</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># we have a separate validation file: in this case, we copy the original file</span>
+            <span class="c1"># to the outorigintrain, if necessary, write the converted original file to</span>
+            <span class="c1"># outconvtrain, if necessary, then do the same with the separate validation file</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">instances_as_string</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">convert</span><span class="p">:</span>
+                    <span class="n">converted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert_instance</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">converted</span> <span class="o">=</span> <span class="kc">None</span>
                 <span class="k">if</span> <span class="n">outorigtrain</span><span class="p">:</span>
                     <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outorigtrain</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">outconvtrain</span><span class="p">:</span>
                     <span class="nb">print</span><span class="p">(</span><span class="n">converted</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outconvtrain</span><span class="p">)</span>
-            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">n_train</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">instances_as_string</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">validation_file</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">convert</span><span class="p">:</span>
+                    <span class="n">converted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert_instance</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">converted</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">outorigval</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outorigval</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">outconvval</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">converted</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outconvval</span><span class="p">)</span>
+                <span class="n">n_val</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Created training/validation files </span><span class="si">%s</span><span class="s2"> / </span><span class="si">%s</span><span class="s2"> instances (total </span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">n_train</span><span class="p">,</span> <span class="n">n_val</span><span class="p">,</span> <span class="n">i</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">outorigtrain</span><span class="p">:</span>
             <span class="n">outorigtrain</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">outorigval</span><span class="p">:</span>
@@ -447,7 +535,6 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
 
             <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-                <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
                 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf=8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">inp</span><span class="p">:</span>
                     <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">inp</span><span class="p">:</span>
                         <span class="n">instance</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
@@ -515,7 +602,10 @@
 <span class="sd">        lists contains as many elements as there are instances. These elements in turn are lists, representing the</span>
 <span class="sd">        values of the feature for each feature vector in the sequence for the instance.</span>
 <span class="sd">        The feature_types list must be specified if is_sequence is True, in that case, n_features is not needed.</span>
-<span class="sd">        If indep_only is True, this will not expect targets and only reshape the independent features.&quot;&quot;&quot;</span>
+<span class="sd">        If indep_only is True, this will not expect targets and only reshape the independent features.</span>
+<span class="sd">        IMPORTANT: this pads all independent features based on their type, with indices getting padded using 0</span>
+<span class="sd">        and all dependent indices using -1!!! If target is specified, the targets are represented by a</span>
+<span class="sd">        onehot vector instead.&quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="n">feature_types</span><span class="p">:</span>
             <span class="n">n_features</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">feature_types</span><span class="p">)</span>
@@ -602,7 +692,9 @@
                     <span class="k">if</span> <span class="n">target</span> <span class="ow">and</span> <span class="n">target</span><span class="o">.</span><span class="n">as_onehot</span><span class="p">:</span>
                         <span class="n">pad_value</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">zero_onehotvec</span><span class="p">()</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="n">pad_value</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="c1"># TODO: this was 0 previously, but we use -1 here directly for sequences,</span>
+                        <span class="c1"># when our target vocab does NOT use separate padding symbol!</span>
+                        <span class="n">pad_value</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
                 <span class="k">if</span> <span class="n">pad</span><span class="p">:</span>
                     <span class="n">Dataset</span><span class="o">.</span><span class="n">pad_matrix_</span><span class="p">(</span><span class="n">out_dep</span><span class="p">,</span> <span class="n">tosize</span><span class="o">=</span><span class="n">seq_max_len</span><span class="p">,</span> <span class="n">pad_left</span><span class="o">=</span><span class="n">pad_left</span><span class="p">,</span> <span class="n">pad_value</span><span class="o">=</span><span class="n">pad_value</span><span class="p">)</span>
             <span class="c1"># to pad the features, we need to know the type of the feature and if we have original format:</span>
@@ -685,7 +777,6 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
 
             <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-                <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
                 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">inp</span><span class="p">:</span>
                     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
                         <span class="n">collect</span> <span class="o">=</span> <span class="p">[]</span>
@@ -743,7 +834,6 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
 
             <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-                <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
                 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">convertedfile</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">inp</span><span class="p">:</span>
                     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
                         <span class="n">collect</span> <span class="o">=</span> <span class="p">[]</span>

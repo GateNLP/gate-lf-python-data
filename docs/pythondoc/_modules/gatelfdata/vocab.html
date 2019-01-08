@@ -58,7 +58,16 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">math</span>
 <span class="c1"># TODO: maybe make use of the gensim library optional?</span>
-<span class="kn">import</span> <span class="nn">gensim</span>
+<span class="c1"># import gensim</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">streamhandler</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+<span class="n">formatter</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span>
+                <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> </span><span class="si">%(name)-12s</span><span class="s1"> </span><span class="si">%(levelname)-8s</span><span class="s1"> </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">streamhandler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">formatter</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">streamhandler</span><span class="p">)</span>
 
 <span class="c1"># OK, the protocol for using this is this:</span>
 <span class="c1"># * create a preliminary instance using &quot;Vocab(...)&quot;</span>
@@ -141,7 +150,6 @@
 <span class="sd">        If emb_dir is not None, then all references to relative (embeddings) files are relative to that</span>
 <span class="sd">        directory.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">counts</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
@@ -201,10 +209,9 @@
             <span class="k">if</span> <span class="n">toidx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">toidx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
             <span class="n">embs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="n">fromidx</span><span class="p">:</span><span class="n">toidx</span><span class="p">]))</span>
-            <span class="k">return</span> <span class="n">embs</span></div>
+        <span class="k">return</span> <span class="n">embs</span></div>
 
 <div class="viewcode-block" id="Vocab.load_embeddings"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.load_embeddings">[docs]</a>    <span class="k">def</span> <span class="nf">load_embeddings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">emb_file</span><span class="p">,</span> <span class="n">filterset</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
         <span class="sd">&quot;&quot;&quot;Load pre-calculated embeddings from the given file. This will update embd_dim as needed!</span>
 <span class="sd">        Currently only supports text format, compressed text format or a two file format where</span>
 <span class="sd">        the file with extension &quot;.vocab&quot; has one word per line and the file with extension &quot;.npy&quot;</span>
@@ -265,6 +272,7 @@
         <span class="k">elif</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.vocab&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;TODO: format .vocab/.npy not yet implemented!&quot;</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">emb_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.gensim&quot;</span><span class="p">):</span>
+            <span class="kn">import</span> <span class="nn">gensim</span>
             <span class="n">gensimmodel</span> <span class="o">=</span> <span class="n">gensim</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">KeyedVectors</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">emb_file</span><span class="p">,</span> <span class="n">mmap</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
             <span class="c1"># now copy over only the embeddings we actually need</span>
             <span class="c1"># TODO: !!!!</span>
@@ -272,7 +280,9 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Embeddings file must have one of the extensions: .txt, .txt.gz, .vocab, .npy&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">embeddings_loaded</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Embeddings for </span><span class="si">%s</span><span class="s2"> loaded: </span><span class="si">%s</span><span class="s2">, dims=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="n">n_added</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">))</span></div>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Embeddings for </span><span class="se">\&quot;</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s2"> loaded: </span><span class="si">%s</span><span class="s2">, dims=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="n">n_added</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">))</span></div>
+        <span class="c1">#if self.stoe is not None and &quot;the&quot; in self.stoe:</span>
+        <span class="c1">#    print(&quot;DEBUG: embeddings for the&quot;, self.stoe[&quot;the&quot;], file=sys.stderr)</span>
 
 <div class="viewcode-block" id="Vocab.get_embeddings"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.get_embeddings">[docs]</a>    <span class="k">def</span> <span class="nf">get_embeddings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return a numpy matrix of the embeddings in the order of the indices. If this is called</span>
@@ -326,10 +336,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">check_nonfinished</span><span class="p">(</span><span class="s2">&quot;set_emb_dims&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span> <span class="o">=</span> <span class="n">dim</span></div>
 
-<div class="viewcode-block" id="Vocab.finish"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.finish">[docs]</a>    <span class="k">def</span> <span class="nf">finish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remove_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="Vocab.finish"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.finish">[docs]</a>    <span class="k">def</span> <span class="nf">finish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remove_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remove_embs</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Build the actual vocab instance, it can only be used properly to look-up things after calling</span>
 <span class="sd">        this method, but no parameters can be changed nor counts added after this.&quot;&quot;&quot;</span>
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_nonfinished</span><span class="p">(</span><span class="s2">&quot;finish&quot;</span><span class="p">)</span>
 
         <span class="c1"># if the emb_train parameter was never set, try to come up with a sensible default here:</span>
@@ -360,13 +369,16 @@
         <span class="c1"># put all the words not satisfying the restriction in the filtered_words set</span>
         <span class="n">filtered_words</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Finishing vocab &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="s2">&quot;before filtering: &quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">),</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_minfreq</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">filtered_words</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
         <span class="c1"># sort the keys by frequency, then alphabetically in reverse order</span>
+        <span class="c1"># (so to achieve this sort, sort first alphabetically, then by frequency)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Vocab&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="s2">&quot;after minfreq filtering: &quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">),</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">itos</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
         <span class="c1"># add the additional symbols at the beginning, first and always at index 0, the pad symbol, except</span>
         <span class="c1"># when no_pad is True</span>
@@ -386,7 +398,7 @@
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">)</span>
-
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Vocab&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="s2">&quot;final: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span> <span class="o">==</span> <span class="s2">&quot;onehot&quot;</span><span class="p">:</span>
             <span class="c1"># set the emb_dims to the number of values we have, but if we have a padding symbol,</span>
             <span class="c1"># do not include it in the dimensions</span>
@@ -466,8 +478,12 @@
         <span class="c1"># print(&quot;DEBUG: stoi new=&quot;, self.stoi, file=sys.stderr)</span>
         <span class="c1"># print(&quot;DEBUG: stoe new=&quot;, self.stoe, file=sys.stderr)</span>
 
+        <span class="c1"># if self.stoe is not None and &quot;the&quot; in self.stoe:</span>
+        <span class="c1">#    print(&quot;DEBUG: embeddings for the&quot;, self.stoe[&quot;the&quot;], file=sys.stderr)</span>
+
         <span class="c1"># cleanup what we do not need any more</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">remove_embs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stoe</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">remove_counts</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">freqs</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">finished</span> <span class="o">=</span> <span class="kc">True</span></div>
@@ -557,11 +573,17 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Cannot retrieve count, data has been removed&quot;</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="Vocab.size"><a class="viewcode-back" href="../../gatelfdata.vocab.html#gatelfdata.vocab.Vocab.size">[docs]</a>    <span class="k">def</span> <span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the total number of entries in the vocab, including any special symbols&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">)</span></div>
+
     <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;:nentries=</span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;Vocab(emb_id=</span><span class="si">%r</span><span class="s2">,emb_train=</span><span class="si">%r</span><span class="s2">,emb_file=</span><span class="si">%r</span><span class="s2">,emb_dims=</span><span class="si">%d</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">)</span></div>
+        <span class="n">tmp_entries</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itos</span><span class="p">),</span><span class="mi">20</span><span class="p">))]</span>
+        <span class="k">return</span> <span class="s2">&quot;Vocab(n=</span><span class="si">%d</span><span class="s2">,emb_id=</span><span class="si">%r</span><span class="s2">,emb_train=</span><span class="si">%r</span><span class="s2">,emb_file=</span><span class="si">%r</span><span class="s2">,emb_dims=</span><span class="si">%d</span><span class="s2">,entries=</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> \
+               <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stoi</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_dims</span><span class="p">,</span> <span class="n">tmp_entries</span><span class="p">)</span></div>
 </pre></div>
 
           </div>

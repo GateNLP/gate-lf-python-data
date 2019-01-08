@@ -61,7 +61,7 @@
 <p>Module for the Dataset class</p>
 <dl class="class">
 <dt id="gatelfdata.dataset.Dataset">
-<em class="property">class </em><code class="descclassname">gatelfdata.dataset.</code><code class="descname">Dataset</code><span class="sig-paren">(</span><em>metafile</em>, <em>reuse_files=False</em>, <em>config=None</em>, <em>targets_need_padding=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/dataset.html#Dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.dataset.Dataset" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">gatelfdata.dataset.</code><code class="descname">Dataset</code><span class="sig-paren">(</span><em>metafile</em>, <em>reuse_files=False</em>, <em>config=None</em>, <em>targets_need_padding=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/dataset.html#Dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.dataset.Dataset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <p>Class representing training data present in the meta and data files.
 After creating the Dataset instance, the attribute .meta contains the loaded metadata.
@@ -269,12 +269,15 @@ For sequence tagging, The independent part contains as many lists as there are f
 lists contains as many elements as there are instances. These elements in turn are lists, representing the
 values of the feature for each feature vector in the sequence for the instance.
 The feature_types list must be specified if is_sequence is True, in that case, n_features is not needed.
-If indep_only is True, this will not expect targets and only reshape the independent features.</p>
+If indep_only is True, this will not expect targets and only reshape the independent features.
+IMPORTANT: this pads all independent features based on their type, with indices getting padded using 0
+and all dependent indices using -1!!! If target is specified, the targets are represented by a
+onehot vector instead.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="gatelfdata.dataset.Dataset.split">
-<code class="descname">split</code><span class="sig-paren">(</span><em>outdir=None</em>, <em>validation_size=None</em>, <em>validation_part=0.1</em>, <em>random_seed=1</em>, <em>convert=False</em>, <em>keep_orig=False</em>, <em>reuse_files=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/dataset.html#Dataset.split"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.dataset.Dataset.split" title="Permalink to this definition">¶</a></dt>
+<code class="descname">split</code><span class="sig-paren">(</span><em>outdir=None</em>, <em>validation_size=None</em>, <em>validation_part=0.1</em>, <em>random_seed=1</em>, <em>convert=False</em>, <em>keep_orig=False</em>, <em>reuse_files=False</em>, <em>validation_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/dataset.html#Dataset.split"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.dataset.Dataset.split" title="Permalink to this definition">¶</a></dt>
 <dd><p>This splits the original file into an actual training file and a validation set file.
 This creates two new files in the same location as the original files, with the “data”/”meta”
 parts of the name replaced with “val” for validation and “train” for training. If converted is
@@ -286,7 +289,10 @@ If outdir is specified, the files will get stored in that directory instead of t
 where the meta/data files are stored.
 If random_seed is set to 0 or None, the random seed generator does not get initialized.
 If reuse_files is True and the files that would have been created are already there
-the method does nothing for that file, assuming, but not checking that the contents is correct.</p>
+the method does nothing for that file, assuming, but not checking that the contents is correct.
+If validation_file is not none, then validation_size and validation_part are ignored and
+the whole original file is used as training file, the given validation_file is expected to
+be a data file that fits the meta, and the content of the validation file is used.</p>
 </dd></dl>
 
 <dl class="method">

@@ -96,7 +96,7 @@ that have been removed because of one of the filter criteria!!</p>
 
 <dl class="method">
 <dt id="gatelfdata.vocab.Vocab.finish">
-<code class="descname">finish</code><span class="sig-paren">(</span><em>remove_counts=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.finish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.finish" title="Permalink to this definition">¶</a></dt>
+<code class="descname">finish</code><span class="sig-paren">(</span><em>remove_counts=True</em>, <em>remove_embs=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.finish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.finish" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build the actual vocab instance, it can only be used properly to look-up things after calling
 this method, but no parameters can be changed nor counts added after this.</p>
 </dd></dl>
@@ -117,7 +117,19 @@ before finish() an exception is raised</p>
 <dl class="method">
 <dt id="gatelfdata.vocab.Vocab.load_embeddings">
 <code class="descname">load_embeddings</code><span class="sig-paren">(</span><em>emb_file</em>, <em>filterset=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.load_embeddings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.load_embeddings" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Load pre-calculated embeddings from the given file. This will update embd_dim as needed!
+Currently only supports text format, compressed text format or a two file format where
+the file with extension “.vocab” has one word per line and the file with extension “.npy”
+is a matrix with as many rows as there are words and as many columns as there are dimensions.
+The format is identified by the presence of one of the extensions “.txt”, “.vec”, “.txt.gz”,
+or “.vocab” and “.npy” in the emb_file given. (“.vec” is an alias for “.txt”)
+The text formats may or may not have a first line that indicates the number of words and
+number of dimensions.
+If filterset is non-empty, all embeddings not in the set are loaded, otherwise all embeddings
+which are also already in the vocabulary are loaded.
+NOTE: this will not check if the case conventions or other conventions (e.g. hyphens) for the tokens
+in our vocabulary are compatible with the conventions used for the embeddings.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="gatelfdata.vocab.Vocab.onehot2string">
@@ -157,6 +169,12 @@ will always be the same for that string and number of dimensions.</p>
 <dt id="gatelfdata.vocab.Vocab.set_max_size">
 <code class="descname">set_max_size</code><span class="sig-paren">(</span><em>max_size=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.set_max_size"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.set_max_size" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="method">
+<dt id="gatelfdata.vocab.Vocab.size">
+<code class="descname">size</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gatelfdata/vocab.html#Vocab.size"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gatelfdata.vocab.Vocab.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total number of entries in the vocab, including any special symbols</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="gatelfdata.vocab.Vocab.string2emb">

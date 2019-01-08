@@ -53,18 +53,35 @@
 
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
-<span class="kn">from</span> <span class="nn">.</span> <span class="n">vocab</span> <span class="kn">import</span> <span class="nn">Vocab</span>
+<span class="kn">from</span> <span class="nn">gatelfdata.vocab</span> <span class="k">import</span> <span class="n">Vocab</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">streamhandler</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+<span class="n">formatter</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span>
+                <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> </span><span class="si">%(name)-12s</span><span class="s1"> </span><span class="si">%(levelname)-8s</span><span class="s1"> </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">streamhandler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">formatter</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">streamhandler</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="Vocabs"><a class="viewcode-back" href="../../gatelfdata.vocabs.html#gatelfdata.vocabs.Vocabs">[docs]</a><span class="k">class</span> <span class="nc">Vocabs</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;A class for managing all the vocab instances that are needed by features&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remove_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remove_embs</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a vocabs instance and set the default behaviour when finishing each</span>
+<span class="sd">        vocab.</span>
+<span class="sd">        :param remove_counts: remove the counts per word data when finishing</span>
+<span class="sd">        :param remove_embs: remove the embs per word data when finishing</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># map from embedding id to vocab instance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_counts</span> <span class="o">=</span> <span class="n">remove_counts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_embs</span> <span class="o">=</span> <span class="n">remove_embs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Vocabs.setup_vocab"><a class="viewcode-back" href="../../gatelfdata.vocabs.html#gatelfdata.vocabs.Vocabs.setup_vocab">[docs]</a>    <span class="k">def</span> <span class="nf">setup_vocab</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrinfo</span><span class="p">,</span> <span class="n">featurestats</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create or update the temporary Vocab instances so that the counts from different attributes get merged&quot;&quot;&quot;</span>
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Pre-initialising vocab for </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">attrinfo</span><span class="p">)</span>
         <span class="n">counts</span> <span class="o">=</span> <span class="n">featurestats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stringCounts&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">counts</span><span class="p">:</span>
@@ -85,7 +102,8 @@
 <div class="viewcode-block" id="Vocabs.finish"><a class="viewcode-back" href="../../gatelfdata.vocabs.html#gatelfdata.vocabs.Vocabs.finish">[docs]</a>    <span class="k">def</span> <span class="nf">finish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Once all the counts have been gathered, create the final instances&quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">vocab</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">vocab</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span></div>
+            <span class="n">vocab</span><span class="o">.</span><span class="n">finish</span><span class="p">(</span><span class="n">remove_counts</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">remove_counts</span><span class="p">,</span> <span class="n">remove_embs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">remove_embs</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Finished vocabs: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="p">,))</span></div>
 
 <div class="viewcode-block" id="Vocabs.get_vocab"><a class="viewcode-back" href="../../gatelfdata.vocabs.html#gatelfdata.vocabs.Vocabs.get_vocab">[docs]</a>    <span class="k">def</span> <span class="nf">get_vocab</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrinfo_or_embid</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return a vocab instance for the given attribute name or embedding id.&quot;&quot;&quot;</span>
