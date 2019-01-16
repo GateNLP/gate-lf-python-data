@@ -186,6 +186,8 @@ class Dataset(object):
                 self.datafile = datafile
                 self.seed = seed
                 self.line_dataset = LineTsvDataset(self.datafile)
+                if len(self.line_dataset) == 0:
+                    raise Exception("Dataset {} contains no instances, will not process")
                 self.shuffled_dataset = ShuffledDataset(self.line_dataset, seed=self.seed)
 
             def __iter__(self):
@@ -213,6 +215,8 @@ class Dataset(object):
                 self.datafile = datafile
                 self.seed = seed
                 self.line_dataset = LineTsvDataset(self.datafile)
+                if len(self.line_dataset) == 0:
+                    raise Exception("Dataset {} contains no instances, will not process")
                 self.shuffled_dataset = ShuffledDataset(self.line_dataset, seed=self.seed)
 
             def __iter__(self):
