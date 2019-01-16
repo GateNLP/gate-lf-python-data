@@ -98,6 +98,13 @@ class LineTsvDataset(ExtendedDataset):
     NOTE: this works only if lines are separated with "\n"!!!
     """
 
+    def have_current_index(self):
+        if not os.path.exists(self.indexfile):
+            return False
+        # if we have an index file, check if its modification date is more recent than
+        # that of the data file: if not, return false
+        return os.path.getmtime(self.indexfile) > os.path.getmtime(self.file)
+
     def __init__(self, file, indexfile=None, reinit=False,
                  encoding="utf8", cols=None, logevery=1000):
         """
@@ -120,7 +127,7 @@ class LineTsvDataset(ExtendedDataset):
         self.cols = cols
         self.logevery = logevery
         # if we need to create the cache file, do this now.
-        if reinit or not os.path.exists(indexfile):
+        if reinit or not self.have_current_index():
             self.idx2offlen = self._index4file(file)
             with open(indexfile, "wb") as indexwriter:
                 pickle.dump(self.idx2offlen, indexwriter)
