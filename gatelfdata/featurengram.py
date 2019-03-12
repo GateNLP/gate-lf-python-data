@@ -22,7 +22,7 @@ def shorten(thelist, maxlen, shorten):
     :param shorten: one of left, right, both, middle, where to remove the elements
     :return: the shortened list
     """
-    if len(thelist <= maxlen):
+    if len(thelist) <= maxlen:
         return thelist
     if shorten == "right":
         return thelist[0:maxlen]
