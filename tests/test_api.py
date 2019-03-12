@@ -287,10 +287,11 @@ class Tests4Dataset1test1(unittest.TestCase):
 
     def test_t3(self):
         # logger.info("Running Tests4Dataset1test1/test_t3")
-        ds = Dataset(TESTFILE2)
+        ds = Dataset(TESTFILE2, config={"noshuffle": True})
 
         it0 = iter(ds.instances_original())
         inst0 = next(it0)
+        print("DEBUG: inst0, type={}, len={}, value={}".format(type(inst0), len(inst0), inst0), file=sys.stderr)
         indep, dep = inst0
         # print("DEBUG: indep=", indep, file=sys.stderr)
         assert indep == [['invincible', 'is', 'a', 'wonderful', 'movie', '.']]
@@ -324,7 +325,7 @@ class Tests4Dataset1test1(unittest.TestCase):
 
     def test_t4(self):
         # logger.info("Running Tests4Dataset1test1/test_t4")
-        ds = Dataset(TESTFILE3)
+        ds = Dataset(TESTFILE3, config={"noshuffle": True})
         logger.debug("TESTFILE3 attrs=%r", ds.meta.get("featureInfo").get("attributes"))
         # Features constructor finishes the vocab, so we need to re-initilize
         features = ds.features
@@ -345,7 +346,7 @@ class Tests4Dataset1test1(unittest.TestCase):
 
     def test_t5(self):
         # logger.info("Running Tests4Dataset1test1/test_t5")
-        ds = Dataset(TESTFILE4)
+        ds = Dataset(TESTFILE4, config={"noshuffle": True})
         it1 = iter(ds.instances_converted(train=False, convert=True))
         rec = next(it1)
 
@@ -391,7 +392,7 @@ class Tests4Dataset1test1(unittest.TestCase):
 
     def test_t6(self):
         # logger.info("Running Tests4Dataset1test1/test_t6")
-        ds = Dataset(TESTFILE2)
+        ds = Dataset(TESTFILE2, config={"noshuffle": True})
         ds.split(convert=True, keep_orig=True, validation_size=3, random_seed=1)
         # check if getting the batches and validation sets works
         valset_orig = ds.validation_set_orig()
@@ -452,7 +453,7 @@ class Tests4Dataset1test1(unittest.TestCase):
 
     def test_t7(self):
         # logger.info("Running Tests4Dataset1test1/test_t7")
-        ds = Dataset(TESTFILE3)
+        ds = Dataset(TESTFILE3, config={"noshuffle": True})
         ds.split(convert=True, keep_orig=True, validation_size=3, random_seed=1)
         # check if getting the batches and validation sets works
         valset_orig = ds.validation_set_orig()
@@ -509,7 +510,7 @@ class Tests4Dataset1test1(unittest.TestCase):
 
     def test_t8(self):
         # logger.info("Running Tests4Dataset1test1/test_t8")
-        ds = Dataset(TESTFILE3, reuse_files=True)
+        ds = Dataset(TESTFILE3, reuse_files=True, config={"noshuffle": True})
         # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
         num_idxs = ds.get_float_feature_idxs()
         # print(file=sys.stderr)
@@ -520,7 +521,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         ngr_idxs = ds.get_indexlist_feature_idxs()
         # print("DEBUG indexlist_idxs=", ngr_idxs, file=sys.stderr)
 
-        ds = Dataset(TESTFILE4, reuse_files=True)
+        ds = Dataset(TESTFILE4, reuse_files=True, config={"noshuffle": True})
         # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
         num_idxs = ds.get_float_feature_idxs()
         # print(file=sys.stderr)
@@ -531,7 +532,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         ngr_idxs = ds.get_indexlist_feature_idxs()
         # print("DEBUG indexlist_idxs=", ngr_idxs, file=sys.stderr)
 
-        ds = Dataset(TESTFILE2, reuse_files=True)
+        ds = Dataset(TESTFILE2, reuse_files=True, config={"noshuffle": True})
         # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
         num_idxs = ds.get_float_feature_idxs()
         # print(file=sys.stderr)
@@ -542,7 +543,7 @@ class Tests4Dataset1test1(unittest.TestCase):
         ngr_idxs = ds.get_indexlist_feature_idxs()
         # print("DEBUG indexlist_idxs=", ngr_idxs, file=sys.stderr)
 
-        ds = Dataset(TESTFILE1, reuse_files=True)
+        ds = Dataset(TESTFILE1, reuse_files=True, config={"noshuffle": True})
         # print("debug orig_train_file=", ds.orig_train_file, file=sys.stderr)
         num_idxs = ds.get_float_feature_idxs()
         # print(file=sys.stderr)
@@ -555,7 +556,7 @@ class Tests4Dataset1test1(unittest.TestCase):
 
     def test_t9(self):
         # logger.info("Running Tests4Dataset1test1/test_t9")
-        ds1 = Dataset(TESTFILE4, reuse_files=False,  targets_need_padding=False)
+        ds1 = Dataset(TESTFILE4, reuse_files=False,  targets_need_padding=False, config={"noshuffle": True})
         ds1.target.set_as_onehot(True)
         batch_reshape = ds1.batches_converted(train=False, batch_size=4, reshape=True, convert=True)
         b1r = next(iter(batch_reshape))

@@ -12,6 +12,36 @@ streamhandler.setFormatter(formatter)
 logger.addHandler(streamhandler)
 
 
+def shorten(thelist, maxlen, shorten):
+    """
+    If thelist has more elements than maxlen, remove elements to make it of size maxlen.
+    The parameter shorten is a string which can be one of left, right, both or middle
+    and specifies where to remove elements.
+    :param thelist: the list to shorten
+    :param maxlen: maximum length of the list
+    :param shorten: one of left, right, both, middle, where to remove the elements
+    :return: the shortened list
+    """
+    if len(thelist <= maxlen):
+        return thelist
+    if shorten == "right":
+        return thelist[0:maxlen]
+    elif shorten == "left":
+        return thelist[-maxlen-1:-1]
+    elif shorten == "both":
+        excess = len(thelist) - maxlen;
+        left = int(excess/2)
+        right = excess - left
+        return thelist[left:-right]
+    elif shorten == "middle":
+        excess = len(thelist) - maxlen;
+        left = int(excess/2)
+        right = excess - left
+        return thelist[0:left]+thelist[-right:]
+    else:
+        raise Exception("Not a valid value for the shorten setting: {}".format(shorten))
+
+
 class FeatureNgram(object):
     """Represents an ngram attribute. The value of such an attribute is a list/sequence of
     things that can be represented by embeddings, """
@@ -22,6 +52,11 @@ class FeatureNgram(object):
         self.attrinfo = attrinfo
         self.featurestats = featurestats
         self.vocab = vocab
+        self.shorten = attrinfo.get("shorten", "")
+        # NOTE: the maxlen/shorten info gets update by any config specs in the dataset
+        if not self.shorten:
+            self.shorten = "right"
+        self.maxlen = attrinfo.get("maxlen", 0)
 
     def type_converted(self):
         """Return the name of the type of information of the feature, once it is converted to
@@ -41,6 +76,8 @@ class FeatureNgram(object):
         # create a new list with the string idices of the values
         # otherwise, we report an error
         if isinstance(value, list):
+            if self.maxlen > 0:
+                value = shorten(value, self.maxlen, self.shorten)
             ret = [self.vocab.string2idx(v) for v in value]
             return ret
         else:

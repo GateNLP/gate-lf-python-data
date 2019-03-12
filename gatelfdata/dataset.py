@@ -68,11 +68,15 @@ class Dataset(object):
         in the same directory are re-used, otherwise the split or convert_to_file methods
         must be run to re-create them before they can be used.
         The config parameter is expected to be a map with config settings. These settings
-        override all other settings with highest priority. Currently the config parameter
-        can only take the following settings:
-        * embs=id:dims:train:minfreq,id:dims:drain:minfreq - a list of settings each for some id,
-        specifying the dimensions, train mode, and minimum frequency.
+        override all other settings with highest priority. Currently the settings used from the
+        config parameter are:
+        * embs=id:dims:train:minfreq:file,id:dims:train:minfreq:file - a list of settings each for some id,
+          specifying the dimensions, train mode, minimum frequency and embeddings file
+        * maxlens=nr:maxlen:shorten,nr:maxlen:shorten specifying for attribute number n (or all)
+          the maximum length and how to shorten (left, right, middle, both, default is right)
         """
+        if config is None:
+            config = {}
         self.config = config
         self.seed = self.config.get("seed", 0)
         # print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
@@ -87,15 +91,18 @@ class Dataset(object):
         self.orig_data_file = Dataset.data4meta(metafile)
         # create the indexed line dataset wrapper and shuffled dataset wrappers
         self.line_dataset = LineTsvDataset(self.orig_data_file)
-        self.shuffled_dataset = ShuffledDataset(self.line_dataset)
+        if config.get("noshuffle", False):
+            self.shuffled_dataset = self.line_dataset
+        else:
+            self.shuffled_dataset = ShuffledDataset(self.line_dataset)
         # override meta settings for the embeddings
-        if config and "embs" in config and config["embs"] is not None:
+        if "embs" in config and config["embs"] is not None:
             embs = config["embs"]
             embs_settings = embs.split(",")
             sdict = {}
             for setting in embs_settings:
                 if ":" not in setting:
-                    raise Exception("No colon in emb-setting, should be of the form id:dim:train:minfrequ %s" % (setting, ))
+                    raise Exception("No colon in emb-setting, should be of the form id:dim:train:minfrequ:file %s" % (setting, ))
                 (embid, embdims, embtrain, embminfreq, embfile) = (setting.split(":") + [""]*4)[:5]
                 tmpsetting = {}
                 if embdims:
@@ -116,6 +123,37 @@ class Dataset(object):
                         for k, v in osetting.items():
                             if k.startswith("emb_"):
                                 attrinfo[k] = v
+        if "maxlens" in config and config["maxlens"] is not None:
+            maxlens = config["maxlens"]
+            maxlens_settings = maxlens.split(",")
+            sdict = {}
+            for setting in maxlens_settings:
+                if ":" not in setting:
+                    raise Exception("No colon in maxlens-setting, should be of the form nr:maxlen:shorten %s" % (setting, ))
+                (nr, maxlen, shorten) = (setting.split(":")+[""]*2)[:3]
+                tmpsetting = {}
+                if nr:
+                    tmpsetting["nr"] = int(nr)
+                else:
+                    nr = -1
+                    tmpsetting["nr"] = nr  # -1 is used internally to mean "all"
+                maxlen = int(maxlen)
+                if maxlen <= 0:
+                    raise Exception("maxlen must be > 0")
+                tmpsetting["maxlen"] = maxlen
+                if shorten.strip() == "":
+                    shorten = "right"
+                if shorten not in ["left", "right", "both", "middle"]:
+                    raise Exception("shorten must be one of left, right, both, middle")
+                tmpsetting["shorten"] = shorten
+                sdict[nr] = tmpsetting
+            for idx, attrinfo in enumerate(self.meta.get("featureInfo").get("attributes")):
+                if -1 in sdict:
+                    attrinfo["maxlen"] = sdict[-1]["maxlen"]
+                    attrinfo["shorten"] = sdict[-1]["shorten"]
+                if idx in sdict:
+                    attrinfo["maxlen"] = sdict[idx]["maxlen"]
+                    attrinfo["shoften"] = sdict[idx]["shorten"]
 
         self.features = Features(self.meta, self.vocabs)
         self.target = Target.make(self.meta, self.vocabs, targets_need_padding=targets_need_padding)
@@ -182,13 +220,16 @@ class Dataset(object):
         """
 
         class StringIterable(object):
-            def __init__(self, datafile, seed=0):
+            def __init__(self, datafile, seed=0, noshuffle=False):
                 self.datafile = datafile
                 self.seed = seed
                 self.line_dataset = LineTsvDataset(self.datafile)
                 if len(self.line_dataset) == 0:
                     raise Exception("Dataset {} contains no instances, will not process")
-                self.shuffled_dataset = ShuffledDataset(self.line_dataset, seed=self.seed)
+                if noshuffle:
+                    self.shuffled_dataset = self.line_dataset
+                else:
+                    self.shuffled_dataset = ShuffledDataset(self.line_dataset, seed=self.seed)
 
             def __iter__(self):
                 for i in range(len(self.shuffled_dataset)):
@@ -203,7 +244,7 @@ class Dataset(object):
                 whichfile = self.orig_train_file
             else:
                 whichfile = self.orig_data_file
-        return StringIterable(whichfile, seed=self.seed)
+        return StringIterable(whichfile, seed=self.seed, noshuffle=self.config.get("noshuffle", False))
 
     def instances_original(self, train=False, file=None):
         """Returns an iterable that allows to read the instances from a file in original format.
@@ -211,17 +252,20 @@ class Dataset(object):
         the split() method or any other file derived from the original data file."""
 
         class StringIterable(object):
-            def __init__(self, datafile, seed=0):
+            def __init__(self, datafile, seed=0, noshuffle=False):
                 self.datafile = datafile
                 self.seed = seed
                 self.line_dataset = LineTsvDataset(self.datafile)
                 if len(self.line_dataset) == 0:
                     raise Exception("Dataset {} contains no instances, will not process")
-                self.shuffled_dataset = ShuffledDataset(self.line_dataset, seed=self.seed)
+                if noshuffle:
+                    self.shuffled_dataset = self.line_dataset
+                else:
+                    self.shuffled_dataset = ShuffledDataset(self.line_dataset, seed=self.seed)
 
             def __iter__(self):
                 for i in range(len(self.shuffled_dataset)):
-                    yield self.shuffled_dataset[i]
+                    yield json.loads(self.shuffled_dataset[i])
         if file:
             whichfile = file
         else:
@@ -231,7 +275,7 @@ class Dataset(object):
                 whichfile = self.orig_train_file
             else:
                 whichfile = self.orig_data_file
-        return StringIterable(whichfile, seed=self.seed)
+        return StringIterable(whichfile, seed=self.seed, noshuffle=self.config.get("noshuffle", False))
 
 
     def convert_indep(self, indep, normalize=None):
