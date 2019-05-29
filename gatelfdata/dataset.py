@@ -10,6 +10,8 @@ from gatelfdata.features import Features
 from gatelfdata.target import Target
 from gatelfdata.vocabs import Vocabs
 import sys
+import random
+
 
 from gatelfdata.lib.dataset import ShuffledDataset, LineTsvDataset
 
@@ -46,6 +48,27 @@ class Dataset(object):
         newpath = os.path.join(pathdir, newname)
         return newpath
 
+    @staticmethod
+    def set_random_seed(seed):
+        """
+        Try to set the seed for all relevant random number generators to either a specific seed if parameter seed>0
+        or randomly if seed==0.
+        :param seed: if 0, use random random seed. If > 0, set to specific value. If <0 do nothing.
+        :return: None
+        """
+        if seed > 0:
+            random.seed(seed)
+            np.random.seed(seed)
+            # according to the docs, the cuda random seed is also set by torch.manual_seed
+            # torch.cuda.manual_seed_all(seed)
+        elif seed == 0:
+            random.seed()
+            rndseed = random.randint(0, 999999999999)
+            np.random.seed(rndseed)
+        else:
+            # seed is < 0, do nothing at all
+            pass
+
     def modified4meta(self, name_part=None, dirname=None):
         """Helper method to construct the full path of one of the files this class creates from
         the original meta/data files. If dir is given, then it is the containing directory for the file.
@@ -79,6 +102,7 @@ class Dataset(object):
             config = {}
         self.config = config
         self.seed = self.config.get("seed", 0)
+        Dataset.set_random_seed(self.seed)
         # print("DEBUG creating dataset from ", metafile, "config is", config, file=sys.stderr)
         remove_embs = config.get("remove_embs", True)
         remove_counts = config.get("remove_counts", True)
