@@ -63,7 +63,7 @@ class Dataset(object):
             # torch.cuda.manual_seed_all(seed)
         elif seed == 0:
             random.seed()
-            rndseed = random.randint(0, 999999999999)
+            rndseed = random.randint(0, 4294967295)
             np.random.seed(rndseed)
         else:
             # seed is < 0, do nothing at all
