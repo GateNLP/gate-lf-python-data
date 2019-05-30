@@ -315,11 +315,11 @@ class Dataset(object):
     def convert_dep(self, dep, is_batch=False, as_onehot=False):
         """Convert the dependent part of an original representation into the converted representation
         where strings are replaced by one hot vectors.
-        If as_onehot is True, then nominal targets is onverted to onehot float vectors instead of
+        If as_onehot is True, then nominal targets is converted to onehot float vectors instead of
         integer indices (ignored for other target types).
         """
         if is_batch:
-            ret = [self.target(dep[v], as_onehot=as_onehot) for v in dep]
+            ret = [self.target(v, as_onehot=as_onehot) for v in dep]
             if isinstance(dep, np.ndarray):
                 ret = np.array(ret)
             return ret
