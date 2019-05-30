@@ -63,7 +63,7 @@ class Dataset(object):
             # torch.cuda.manual_seed_all(seed)
         elif seed == 0:
             random.seed()
-            rndseed = random.randint(0, 999999999999)
+            rndseed = random.randint(0, 4294967295)
             np.random.seed(rndseed)
         else:
             # seed is < 0, do nothing at all
@@ -315,11 +315,11 @@ class Dataset(object):
     def convert_dep(self, dep, is_batch=False, as_onehot=False):
         """Convert the dependent part of an original representation into the converted representation
         where strings are replaced by one hot vectors.
-        If as_onehot is True, then nominal targets is onverted to onehot float vectors instead of
+        If as_onehot is True, then nominal targets is converted to onehot float vectors instead of
         integer indices (ignored for other target types).
         """
         if is_batch:
-            ret = [self.target(dep[v], as_onehot=as_onehot) for v in dep]
+            ret = [self.target(v, as_onehot=as_onehot) for v in dep]
             if isinstance(dep, np.ndarray):
                 ret = np.array(ret)
             return ret
@@ -490,9 +490,13 @@ class Dataset(object):
             for instance in self.instances_converted(train=False, convert=True, file=infile):
                 print(json.dumps(instance), file=out)
 
-    def validation_set_orig(self):
+    def validation_set_orig(self, as_batch=False):
         """Read and return the validation set rows in original format. For this to work, the split()
-        method must have been run and either convert have been False or convert True and keep_orig True."""
+        method must have been run and either convert have been False or convert True and keep_orig True.
+
+        :param as_batch: return the dataset reshaped to be used as a batch for the module
+        :return: the validation set either in original shape or batch shape
+        """
         if not self.have_orig_split:
             raise Exception("We do not have the splitted original file, run the split method.")
         validationsetfile = self.modified4meta(name_part="orig.val", dirname=self.outdir)
@@ -500,6 +504,8 @@ class Dataset(object):
         with open(validationsetfile, "rt", encoding="utf-8") as inp:
             for line in inp:
                 valset.append(json.loads(line))
+        if as_batch:
+            valset = self.reshape_batch(valset, as_numpy=False, from_original=True)
         return valset
 
     def validation_set_converted(self, as_numpy=False, as_batch=False):
