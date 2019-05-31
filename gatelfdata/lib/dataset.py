@@ -137,9 +137,7 @@ class LineTsvDataset(ExtendedDataset):
         self.len = len(self.idx2offlen)
 
     def __del__(self):
-        # print("DEBUG: calling __del__")
         if self.reader is not None:
-            # print("DEBUG: closing reader!")
             self.reader.close()
 
     def _index4file(self, file):
@@ -156,7 +154,6 @@ class LineTsvDataset(ExtendedDataset):
                 # line = bytes.decode(self.encoding)
                 linelen = len(linebytes)
                 idx2offlen.append((startoffset, linelen))
-                # print("DEBUG indexing {}/{}".format(startoffset,l))
                 startoffset += linelen
                 linenr += 1
                 if self.logevery is not None and linenr % self.logevery == 0:
@@ -168,14 +165,13 @@ class LineTsvDataset(ExtendedDataset):
 
     def __getitem__(self, index):
         if self.reader is None:
-            # print("DEBUG: opening reader!")
             self.reader = open(self.file, "rb")
         if index >= self.len or index < -self.len:
             raise IndexError()
         off, linelen = self.idx2offlen[index]
         self.reader.seek(off, os.SEEK_SET)
-        bytes = self.reader.read(linelen)
-        line = bytes.decode(self.encoding)
+        asbytes = self.reader.read(linelen)
+        line = asbytes.decode(self.encoding)
         if self.cols is None:
             return line
         else:
@@ -226,19 +222,19 @@ class DirFilesDataset(ExtendedDataset):
                 return  # do not need to do any checking!
             # find all the files in the directory that exist
             i = 0
-            len = 0
+            thelen = 0
             while True:
                 if os.path.exists(os.path.join(self.directory, str(i)+"."+self.as_format)):
-                   len = i+1
-                   i += 1
+                    thelen = i+1
+                    i += 1
                 else:
                     break
-            if len == 0:
+            if thelen == 0:
                 raise Exception("No files found!")
-            self.len = len
+            self.len = thelen
         else:
             self.len = len(basenames)
-            if len == 0:
+            if self.len == 0:
                 raise Exception("The basenames list must not be empty")
             # check if all files are actually there
             if files_exist:

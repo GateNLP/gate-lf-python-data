@@ -230,8 +230,6 @@ class Vocab(object):
             raise Exception("Embeddings file must have one of the extensions: .txt, .txt.gz, .vocab, .npy")
         self.embeddings_loaded = True
         logger.info("Embeddings for \"%s\" loaded: %s, dims=%s" % (self.emb_id, n_added, self.emb_dims))
-        #if self.stoe is not None and "the" in self.stoe:
-        #    print("DEBUG: embeddings for the", self.stoe["the"], file=sys.stderr)
 
     def get_embeddings(self):
         """Return a numpy matrix of the embeddings in the order of the indices. If this is called
@@ -318,7 +316,7 @@ class Vocab(object):
         # put all the words not satisfying the restriction in the filtered_words set
         filtered_words = set()
         self.itos = []
-        print("Finishing vocab ", self.emb_id, "before filtering: ", len(self.freqs), file=sys.stderr)
+        logger.debug("Finishing vocab {} before filtering: {}".format(self.emb_id, len(self.freqs)))
         for s in self.freqs:
             if self.freqs[s] >= self.emb_minfreq:
                 self.itos.append(s)
@@ -327,7 +325,7 @@ class Vocab(object):
         # sort the keys by frequency, then alphabetically in reverse order
         # (so to achieve this sort, sort first alphabetically, then by frequency)
         self.itos = sorted(self.itos)
-        print("Vocab", self.emb_id, "after minfreq filtering: ", len(self.itos), file=sys.stderr)
+        logger.debug("Vocab {} after minfrequ filtering: {}".format(self.emb_id, len(self.itos)))
         self.itos = sorted(self.itos, reverse=True, key=lambda x: self.freqs[x])
         # add the additional symbols at the beginning, first and always at index 0, the pad symbol, except
         # when no_pad is True
@@ -347,7 +345,7 @@ class Vocab(object):
         for i, s in enumerate(self.itos):
             self.stoi[s] = i
         self.n = len(self.itos)
-        print("Vocab", self.emb_id, "final: ", self.n, file=sys.stderr)
+        logger.debug("Vocab {} final: {}".format(self.emb_id, self.n))
         if self.emb_train == "onehot":
             # set the emb_dims to the number of values we have, but if we have a padding symbol,
             # do not include it in the dimensions
@@ -355,8 +353,6 @@ class Vocab(object):
                 self.emb_dims = self.n - 1
             else:
                 self.emb_dims = self.n
-
-        # print("DEBUG: initial itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
 
         if not self.emb_file and not self.emb_dims:
             self.emb_dims = int(math.log2(self.n)**1.8)+1
@@ -423,20 +419,12 @@ class Vocab(object):
                 if not self.no_special_indices:
                     self.embeddings[0] = np.zeros(self.emb_dims, np.float32)
 
-        # print("DEBUG: itos new=", self.itos, file=sys.stderr)
-        # print("DEBUG: stoi new=", self.stoi, file=sys.stderr)
-        # print("DEBUG: stoe new=", self.stoe, file=sys.stderr)
-
-        # if self.stoe is not None and "the" in self.stoe:
-        #    print("DEBUG: embeddings for the", self.stoe["the"], file=sys.stderr)
-
         # cleanup what we do not need any more
         if remove_embs:
             self.stoe = None
         if remove_counts:
             self.freqs = None
         self.finished = True
-        # print("DEBUG: final itos for ",self.emb_id,"is",self.itos[0:20], file=sys.stderr)
 
     def idx2string(self, idx):
         """Return the string for this index"""
